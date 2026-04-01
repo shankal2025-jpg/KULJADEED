@@ -1,0 +1,93 @@
+{
+  "theme": "light",
+  "archetype": "4",
+  "archetype_name": "Swiss & High-Contrast",
+  "design_philosophy": "A high-end, premium e-commerce experience. Focus on a modular Bento Grid layout to organize diverse multi-category products cleanly. Uses strict geometric spacing, high-contrast monochrome base with sharp, vibrant accents, and full RTL/LTR bi-directional design support.",
+  "colors": {
+    "background": "#F8F9FA",
+    "surface": "#FFFFFF",
+    "primary_text": "#0A0A0A",
+    "secondary_text": "#6B7280",
+    "border": "#E5E7EB",
+    "cta_background": "#0A0A0A",
+    "cta_text": "#FFFFFF",
+    "cta_hover": "#333333",
+    "accent_brand": "#FF3366",
+    "accent_success": "#008A00",
+    "accent_warning": "#FFB900"
+  },
+  "typography": {
+    "english_heading": "Cabinet Grotesk",
+    "english_body": "Satoshi",
+    "arabic_font": "Cairo",
+    "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-none font-display",
+    "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight font-display",
+    "h3": "text-xl sm:text-2xl tracking-tight font-display",
+    "body": "text-base leading-relaxed font-body",
+    "label": "text-xs tracking-[0.2em] uppercase font-body font-bold",
+    "instructions": "Add Google Fonts/Fontshare links in head. Use standard Tailwind logical text alignment (`text-start`, `text-end`) to automatically flip alignment for RTL. Do NOT use `text-left` or `text-right`."
+  },
+  "layout_and_spacing": {
+    "bento_grid": "Use grid-cols-1 md:grid-cols-12 gap-6 or gap-8. Span logic: Hero items col-span-12 md:col-span-8 row-span-2, Secondary items col-span-12 md:col-span-4.",
+    "spacing_scale": "Generous spacing. Use p-6 or p-8 inside cards to prevent text collision.",
+    "rtl_ltr_strategy": "CRITICAL: You MUST use Tailwind's logical properties. Use `ps-*` (padding-start), `pe-*` (padding-end), `ms-*` (margin-start), `me-*` (margin-end). Avoid `pl-*`, `pr-*`, `ml-*`, `mr-*` so the UI naturally mirrors in Arabic mode. Include `<html dir=\"ltr\">` and a state toggle that updates the dir attribute.",
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full"
+  },
+  "surface_styles": {
+    "cards": "bg-white border border-gray-200 rounded-xl transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-gray-300 overflow-hidden relative",
+    "header": "sticky top-0 z-50 backdrop-blur-xl bg-white/80 border-b border-gray-200",
+    "buttons": "rounded-full px-8 py-3 font-medium transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-black",
+    "badges": "absolute top-4 start-4 px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-black text-white"
+  },
+  "motion_and_interactions": {
+    "hover_states": "All interactives must explicitly change background and text color.",
+    "page_transitions": "Staggered fade-up entrances for product lists using framer-motion.",
+    "microinteractions": "Button active state scale-down (active:scale-95). Product image zoom-in on hover (group-hover:scale-105 transition-transform duration-500)."
+  },
+  "components_strategy": {
+    "forms_and_inputs": "Use Shadcn customized components. Inputs must have clear focus states (focus:ring-2 focus:ring-black focus:border-transparent).",
+    "cart": "Use a Shadcn Sheet (Slide-over) component for the shopping cart. The sheet should slide from the `end` (Right side for LTR, Left side for RTL).",
+    "data_testid": "ALL interactive elements (buttons, inputs, links, language toggles, cart buttons) MUST have data-testid attributes (e.g., data-testid='add-to-cart-btn', data-testid='lang-switch-btn')."
+  },
+  "media_and_assets": {
+    "icons_library": "lucide-react (use symmetrical icons where possible, mirror directional icons dynamically using CSS or logic for RTL if needed)",
+    "images": {
+      "hero_background": {
+        "url": "https://images.unsplash.com/photo-1760172287483-02d382f63a6f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTJ8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGx1eHVyeSUyMGdyYWRpZW50JTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NzUwNDkwNzl8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract luxury golden and dark brown background.",
+        "placement": "Homepage Hero Section (with overlay bg-black/40 or bg-white/40 depending on text contrast)"
+      },
+      "product_beauty": {
+        "url": "https://images.pexels.com/photos/3785784/pexels-photo-3785784.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Premium Perfume Bottle",
+        "category": "Beauty & Fragrance"
+      },
+      "product_lifestyle": {
+        "url": "https://images.unsplash.com/photo-1754254562873-2d38f519aba3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTJ8MHwxfHNlYXJjaHw0fHxtaW5pbWFsaXN0JTIwcHJvZHVjdCUyMGxpZmVzdHlsZXxlbnwwfHx8fDE3NzUwNDkwNTV8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Supplements & Speaker",
+        "category": "Electronics & Wellness"
+      },
+      "product_electronics": {
+        "url": "https://images.pexels.com/photos/6791447/pexels-photo-6791447.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Red Smartphone",
+        "category": "Electronics"
+      },
+      "product_fashion": {
+        "url": "https://images.unsplash.com/photo-1745284504844-7979176dc29b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTJ8MHwxfHNlYXJjaHwzfHxtaW5pbWFsaXN0JTIwcHJvZHVjdCUyMGxpZmVzdHlsZXxlbnwwfHx8fDE3NzUwNDkwNTV8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Straw Hat",
+        "category": "Fashion"
+      }
+    }
+  },
+  "instructions_to_main_agent": [
+    "Implement a Language Switcher in the Header (EN / AR) that toggles the `dir` attribute on the `<html>` element between 'ltr' and 'rtl'.",
+    "NEVER use `ml-`, `mr-`, `pl-`, `pr-`, `left-`, `right-`. ONLY use Tailwind's logical properties: `ms-`, `me-`, `ps-`, `pe-`, `start-`, `end-` to ensure full RTL mirroring out of the box.",
+    "Use `text-start` and `text-end` instead of `text-left` and `text-right`.",
+    "For the multi-category showcase on the homepage, implement a 'Bento Grid' layout. Example: A large featured product spanning 2 columns/rows, next to smaller category cards.",
+    "Use 'Cabinet Grotesk' for English headings and 'Cairo' for Arabic text. You can add these to the document `<head>` via Google Fonts or Fontshare.",
+    "Do NOT use generic placeholder text. Populate the store with realistic product names and prices using the provided media assets.",
+    "Integrate Shadcn primitives heavily (Sheet for Cart, Dialog for Auth, Select for Sort/Filter) but style them cleanly. Strip away heavy shadows and rely on 1px borders for a premium high-contrast look.",
+    "Build the Stripe checkout flow logic connected to the Cart.",
+    "Ensure all interactive elements have `data-testid` attributes."
+  ]
+}
