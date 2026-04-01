@@ -23,7 +23,7 @@ const iconMap = {
 };
 
 const HomePage = () => {
-  const { t, getLocalizedName } = useLanguage();
+  const { t, lang, getLocalizedName } = useLanguage();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -148,12 +148,12 @@ const HomePage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                <span className="text-black font-bold text-lg">S</span>
+              <div className="w-8 h-8 bg-gradient-to-br from-rose-500 to-orange-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-lg">ك</span>
               </div>
-              <span className="font-display text-xl font-bold">Store</span>
+              <span className="font-display text-xl font-bold">{lang === 'ar' ? 'كل جديد' : 'KULJADEED'}</span>
             </div>
-            <p className="text-gray-400 text-sm">© 2024 Store. All rights reserved.</p>
+            <p className="text-gray-400 text-sm">© 2024 {lang === 'ar' ? 'كل جديد' : 'KULJADEED'}. {lang === 'ar' ? 'جميع الحقوق محفوظة' : 'All rights reserved'}.</p>
           </div>
         </div>
       </footer>

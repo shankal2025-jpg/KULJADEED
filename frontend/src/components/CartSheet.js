@@ -1,11 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, Tag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from './ui/sheet';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
 import axios from 'axios';
@@ -28,6 +29,39 @@ const CartSheet = ({ children }) => {
   const navigate = useNavigate();
   const [open, setOpen] = React.useState(false);
   const [checkoutLoading, setCheckoutLoading] = React.useState(false);
+  const [couponCode, setCouponCode] = React.useState('');
+  const [couponApplied, setCouponApplied] = React.useState(null);
+  const [couponError, setCouponError] = React.useState('');
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponError('');
+    try {
+      const { data } = await api.post('/api/coupons/validate', { code: couponCode });
+      setCouponApplied(data);
+    } catch (e) {
+      setCouponError(e.response?.data?.detail || 'Invalid coupon');
+      setCouponApplied(null);
+    }
+  };
+
+  const removeCoupon = () => {
+    setCouponApplied(null);
+    setCouponCode('');
+    setCouponError('');
+  };
+
+  const calculateDiscount = () => {
+    if (!couponApplied) return 0;
+    if (cart.total < couponApplied.min_order) return 0;
+    if (couponApplied.discount_type === 'percentage') {
+      return cart.total * (couponApplied.discount_value / 100);
+    }
+    return Math.min(couponApplied.discount_value, cart.total);
+  };
+
+  const discount = calculateDiscount();
+  const finalTotal = Math.max(cart.total - discount, 0);
 
   const handleCheckout = async () => {
     if (!user) {
@@ -39,7 +73,10 @@ const CartSheet = ({ children }) => {
     setCheckoutLoading(true);
     try {
       const originUrl = window.location.origin;
-      const { data } = await api.post('/api/checkout', { origin_url: originUrl });
+      const { data } = await api.post('/api/checkout', { 
+        origin_url: originUrl,
+        coupon_code: couponApplied?.code || null
+      });
       window.location.href = data.url;
     } catch (e) {
       console.error('Checkout error:', e);
@@ -132,11 +169,63 @@ const CartSheet = ({ children }) => {
               </div>
             </ScrollArea>
 
-            <div className="pt-4 border-t">
-              <div className="flex items-center justify-between mb-4">
-                <span className="font-medium">{t('subtotal')}</span>
-                <span className="text-xl font-bold">${cart.total.toFixed(2)}</span>
+            <div className="pt-4 border-t space-y-4">
+              {/* Coupon Code Input */}
+              <div className="space-y-2">
+                {couponApplied ? (
+                  <div className="flex items-center justify-between bg-green-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium text-green-700">{couponApplied.code}</span>
+                      <span className="text-xs text-green-600">
+                        ({couponApplied.discount_type === 'percentage' ? `${couponApplied.discount_value}%` : `$${couponApplied.discount_value}`} off)
+                      </span>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={removeCoupon} className="text-red-500 h-6 px-2">
+                      {lang === 'ar' ? 'إزالة' : 'Remove'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder={lang === 'ar' ? 'كود الخصم' : 'Coupon code'}
+                      className="flex-1"
+                      data-testid="coupon-input"
+                    />
+                    <Button 
+                      variant="outline" 
+                      onClick={handleApplyCoupon}
+                      disabled={!couponCode.trim()}
+                      data-testid="apply-coupon-btn"
+                    >
+                      {lang === 'ar' ? 'تطبيق' : 'Apply'}
+                    </Button>
+                  </div>
+                )}
+                {couponError && <p className="text-xs text-red-500">{couponError}</p>}
               </div>
+
+              {/* Subtotal and Discount */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">{t('subtotal')}</span>
+                  <span>${cart.total.toFixed(2)}</span>
+                </div>
+                {discount > 0 && (
+                  <div className="flex items-center justify-between text-sm text-green-600">
+                    <span>{lang === 'ar' ? 'الخصم' : 'Discount'}</span>
+                    <span>-${discount.toFixed(2)}</span>
+                  </div>
+                )}
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{lang === 'ar' ? 'المجموع' : 'Total'}</span>
+                  <span className="text-xl font-bold">${finalTotal.toFixed(2)}</span>
+                </div>
+              </div>
+
               <Button
                 className="w-full bg-black text-white hover:bg-gray-800 rounded-full h-12"
                 onClick={handleCheckout}

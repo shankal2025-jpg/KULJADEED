@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, Menu, Globe, LogOut, Package, Settings } from 'lucide-react';
+import { ShoppingCart, User, Menu, Globe, LogOut, Package, Settings, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -27,10 +27,12 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2" data-testid="logo-link">
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">S</span>
+            <div className="w-8 h-8 bg-gradient-to-br from-rose-500 to-orange-500 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-lg">ك</span>
             </div>
-            <span className="font-display text-xl font-bold tracking-tight">Store</span>
+            <span className="font-display text-xl font-bold tracking-tight">
+              {lang === 'ar' ? 'كل جديد' : 'KULJADEED'}
+            </span>
           </Link>
 
           {/* Desktop Nav */}
@@ -83,6 +85,10 @@ const Header = () => {
                   <DropdownMenuItem onClick={() => navigate('/orders')} data-testid="my-orders-btn">
                     <Package className="me-2 h-4 w-4" />
                     {t('myOrders')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/wishlist')} data-testid="wishlist-btn">
+                    <Heart className="me-2 h-4 w-4" />
+                    {lang === 'ar' ? 'قائمة الرغبات' : 'Wishlist'}
                   </DropdownMenuItem>
                   {user.role === 'admin' && (
                     <DropdownMenuItem onClick={() => navigate('/admin')} data-testid="admin-btn">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Star, Minus, Plus, ShoppingCart, ArrowLeft } from 'lucide-react';
+import { Star, Minus, Plus, ShoppingCart, ArrowLeft, Heart } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -26,12 +26,13 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addToCart } = useCart();
-  const { t, getLocalizedName, getLocalizedDescription } = useLanguage();
+  const { t, lang, getLocalizedName, getLocalizedDescription } = useLanguage();
   
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [inWishlist, setInWishlist] = useState(false);
   
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
@@ -50,6 +51,37 @@ const ProductDetailPage = () => {
     };
     fetchProduct();
   }, [id]);
+
+  useEffect(() => {
+    const checkWishlist = async () => {
+      if (!user) return;
+      try {
+        const { data } = await api.get('/api/wishlist');
+        setInWishlist(data.items.some(item => item.id === id));
+      } catch (e) {
+        console.error('Failed to check wishlist:', e);
+      }
+    };
+    checkWishlist();
+  }, [user, id]);
+
+  const handleToggleWishlist = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    try {
+      if (inWishlist) {
+        await api.delete(`/api/wishlist/remove/${id}`);
+        setInWishlist(false);
+      } else {
+        await api.post('/api/wishlist/add', { product_id: id });
+        setInWishlist(true);
+      }
+    } catch (e) {
+      alert('Failed to update wishlist');
+    }
+  };
 
   const handleAddToCart = async () => {
     if (!user) {
@@ -214,7 +246,16 @@ const ProductDetailPage = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-4 mt-8">
+            <div className="flex gap-3 mt-8">
+              <Button
+                variant="outline"
+                size="icon"
+                className={`rounded-full h-12 w-12 ${inWishlist ? 'text-rose-500 border-rose-500' : ''}`}
+                onClick={handleToggleWishlist}
+                data-testid="wishlist-btn"
+              >
+                <Heart className={`h-5 w-5 ${inWishlist ? 'fill-rose-500' : ''}`} />
+              </Button>
               <Button
                 variant="outline"
                 className="flex-1 rounded-full h-12"

@@ -37,8 +37,8 @@ const LoginPage = () => {
         <div className="bg-white border border-gray-200 rounded-xl p-8">
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">S</span>
+              <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-orange-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-xl">ك</span>
               </div>
             </Link>
             <h1 className="text-2xl font-display font-bold">{t('login')}</h1>

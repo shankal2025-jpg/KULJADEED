@@ -104,6 +104,29 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
+class WishlistItem(BaseModel):
+    product_id: str
+
+class CouponCreate(BaseModel):
+    code: str
+    discount_type: str = "percentage"  # percentage or fixed
+    discount_value: float
+    min_order: float = 0
+    max_uses: int = 100
+    expires_at: Optional[str] = None
+
+class CouponApply(BaseModel):
+    code: str
+
+class CheckoutWithCoupon(BaseModel):
+    origin_url: str
+    coupon_code: Optional[str] = None
+
+class OrderStatusUpdate(BaseModel):
+    status: str
+    tracking_number: Optional[str] = None
+    tracking_url: Optional[str] = None
+
 # ===================== HELPERS =====================
 
 def hash_password(password: str) -> str:
@@ -486,31 +509,139 @@ async def get_orders(user: dict = Depends(get_current_user)):
     orders = await db.orders.find({"user_id": user["id"]}).sort("created_at", -1).to_list(100)
     return [serialize_doc(o) for o in orders]
 
+@api_router.get("/orders/{order_id}")
+async def get_order_detail(order_id: str, user: dict = Depends(get_current_user)):
+    order = await db.orders.find_one({"_id": ObjectId(order_id), "user_id": user["id"]})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return serialize_doc(order)
+
 @api_router.get("/admin/orders")
 async def get_all_orders(user: dict = Depends(get_admin_user)):
     orders = await db.orders.find({}).sort("created_at", -1).to_list(1000)
     return [serialize_doc(o) for o in orders]
 
 @api_router.put("/admin/orders/{order_id}/status")
-async def update_order_status(order_id: str, status: str, user: dict = Depends(get_admin_user)):
-    await db.orders.update_one({"_id": ObjectId(order_id)}, {"$set": {"status": status}})
+async def update_order_status(order_id: str, status: str, tracking_number: Optional[str] = None, tracking_url: Optional[str] = None, user: dict = Depends(get_admin_user)):
+    update_data = {"status": status, "updated_at": datetime.now(timezone.utc)}
+    if tracking_number:
+        update_data["tracking_number"] = tracking_number
+    if tracking_url:
+        update_data["tracking_url"] = tracking_url
+    await db.orders.update_one({"_id": ObjectId(order_id)}, {"$set": update_data})
     return {"message": "Order status updated"}
+
+# ===================== WISHLIST ROUTES =====================
+
+@api_router.get("/wishlist")
+async def get_wishlist(user: dict = Depends(get_current_user)):
+    wishlist = await db.wishlists.find_one({"user_id": user["id"]})
+    if not wishlist:
+        return {"items": []}
+    
+    items = []
+    for product_id in wishlist.get("items", []):
+        product = await db.products.find_one({"_id": ObjectId(product_id)})
+        if product:
+            items.append(serialize_doc(product))
+    
+    return {"items": items}
+
+@api_router.post("/wishlist/add")
+async def add_to_wishlist(data: WishlistItem, user: dict = Depends(get_current_user)):
+    wishlist = await db.wishlists.find_one({"user_id": user["id"]})
+    
+    if not wishlist:
+        await db.wishlists.insert_one({"user_id": user["id"], "items": [data.product_id]})
+    else:
+        if data.product_id not in wishlist.get("items", []):
+            await db.wishlists.update_one(
+                {"user_id": user["id"]},
+                {"$push": {"items": data.product_id}}
+            )
+    
+    return {"message": "Added to wishlist"}
+
+@api_router.delete("/wishlist/remove/{product_id}")
+async def remove_from_wishlist(product_id: str, user: dict = Depends(get_current_user)):
+    await db.wishlists.update_one(
+        {"user_id": user["id"]},
+        {"$pull": {"items": product_id}}
+    )
+    return {"message": "Removed from wishlist"}
+
+# ===================== COUPON ROUTES =====================
+
+@api_router.get("/coupons")
+async def get_coupons(user: dict = Depends(get_admin_user)):
+    coupons = await db.coupons.find({}).to_list(100)
+    return [serialize_doc(c) for c in coupons]
+
+@api_router.post("/admin/coupons")
+async def create_coupon(data: CouponCreate, user: dict = Depends(get_admin_user)):
+    existing = await db.coupons.find_one({"code": data.code.upper()})
+    if existing:
+        raise HTTPException(status_code=400, detail="Coupon code already exists")
+    
+    coupon_doc = {
+        "code": data.code.upper(),
+        "discount_type": data.discount_type,
+        "discount_value": data.discount_value,
+        "min_order": data.min_order,
+        "max_uses": data.max_uses,
+        "used_count": 0,
+        "expires_at": datetime.fromisoformat(data.expires_at) if data.expires_at else None,
+        "is_active": True,
+        "created_at": datetime.now(timezone.utc)
+    }
+    result = await db.coupons.insert_one(coupon_doc)
+    return {"id": str(result.inserted_id), "code": data.code.upper()}
+
+@api_router.delete("/admin/coupons/{coupon_id}")
+async def delete_coupon(coupon_id: str, user: dict = Depends(get_admin_user)):
+    await db.coupons.delete_one({"_id": ObjectId(coupon_id)})
+    return {"message": "Coupon deleted"}
+
+@api_router.post("/coupons/validate")
+async def validate_coupon(data: CouponApply, user: dict = Depends(get_current_user)):
+    coupon = await db.coupons.find_one({"code": data.code.upper(), "is_active": True})
+    if not coupon:
+        raise HTTPException(status_code=400, detail="Invalid coupon code")
+    
+    expires_at = coupon.get("expires_at")
+    if expires_at:
+        # Handle both aware and naive datetimes
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > expires_at:
+            raise HTTPException(status_code=400, detail="Coupon has expired")
+    
+    if coupon.get("used_count", 0) >= coupon.get("max_uses", 100):
+        raise HTTPException(status_code=400, detail="Coupon usage limit reached")
+    
+    return {
+        "valid": True,
+        "code": coupon["code"],
+        "discount_type": coupon["discount_type"],
+        "discount_value": coupon["discount_value"],
+        "min_order": coupon.get("min_order", 0)
+    }
 
 # ===================== PAYMENT ROUTES =====================
 
 @api_router.post("/checkout")
-async def create_checkout(data: CheckoutRequest, request: Request, user: dict = Depends(get_current_user)):
+async def create_checkout(data: CheckoutWithCoupon, request: Request, user: dict = Depends(get_current_user)):
     cart = await db.carts.find_one({"user_id": user["id"]})
     if not cart or not cart.get("items"):
         raise HTTPException(status_code=400, detail="Cart is empty")
     
-    total = 0.0
+    subtotal = 0.0
     items_data = []
     for item in cart["items"]:
         product = await db.products.find_one({"_id": ObjectId(item["product_id"])})
         if product:
             item_total = product["price"] * item["quantity"]
-            total += item_total
+            subtotal += item_total
             items_data.append({
                 "product_id": item["product_id"],
                 "name": product["name_en"],
@@ -518,8 +649,29 @@ async def create_checkout(data: CheckoutRequest, request: Request, user: dict = 
                 "quantity": item["quantity"]
             })
     
-    if total <= 0:
+    if subtotal <= 0:
         raise HTTPException(status_code=400, detail="Invalid cart total")
+    
+    # Apply coupon if provided
+    discount = 0.0
+    coupon_code = None
+    if data.coupon_code:
+        coupon = await db.coupons.find_one({"code": data.coupon_code.upper(), "is_active": True})
+        if coupon:
+            if coupon.get("expires_at") and datetime.now(timezone.utc) > coupon["expires_at"]:
+                raise HTTPException(status_code=400, detail="Coupon has expired")
+            if coupon.get("used_count", 0) >= coupon.get("max_uses", 100):
+                raise HTTPException(status_code=400, detail="Coupon usage limit reached")
+            if subtotal < coupon.get("min_order", 0):
+                raise HTTPException(status_code=400, detail=f"Minimum order ${coupon['min_order']} required for this coupon")
+            
+            coupon_code = coupon["code"]
+            if coupon["discount_type"] == "percentage":
+                discount = subtotal * (coupon["discount_value"] / 100)
+            else:
+                discount = min(coupon["discount_value"], subtotal)
+    
+    total = max(subtotal - discount, 0.01)  # Minimum $0.01 for Stripe
     
     origin_url = data.origin_url.rstrip("/")
     success_url = f"{origin_url}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}"
@@ -536,7 +688,7 @@ async def create_checkout(data: CheckoutRequest, request: Request, user: dict = 
         currency="usd",
         success_url=success_url,
         cancel_url=cancel_url,
-        metadata={"user_id": user["id"], "user_email": user["email"]}
+        metadata={"user_id": user["id"], "user_email": user["email"], "coupon_code": coupon_code or ""}
     )
     
     session: CheckoutSessionResponse = await stripe_checkout.create_checkout_session(checkout_request)
@@ -546,6 +698,9 @@ async def create_checkout(data: CheckoutRequest, request: Request, user: dict = 
         "session_id": session.session_id,
         "user_id": user["id"],
         "user_email": user["email"],
+        "subtotal": subtotal,
+        "discount": discount,
+        "coupon_code": coupon_code,
         "amount": total,
         "currency": "usd",
         "items": items_data,
@@ -553,7 +708,7 @@ async def create_checkout(data: CheckoutRequest, request: Request, user: dict = 
         "created_at": datetime.now(timezone.utc)
     })
     
-    return {"url": session.url, "session_id": session.session_id}
+    return {"url": session.url, "session_id": session.session_id, "subtotal": subtotal, "discount": discount, "total": total}
 
 @api_router.get("/checkout/status/{session_id}")
 async def get_checkout_status(session_id: str, user: dict = Depends(get_current_user)):
@@ -575,15 +730,27 @@ async def get_checkout_status(session_id: str, user: dict = Depends(get_current_
         if status.payment_status == "paid":
             existing_order = await db.orders.find_one({"session_id": session_id})
             if not existing_order:
+                # Update coupon usage if used
+                if transaction.get("coupon_code"):
+                    await db.coupons.update_one(
+                        {"code": transaction["coupon_code"]},
+                        {"$inc": {"used_count": 1}}
+                    )
+                
                 await db.orders.insert_one({
                     "session_id": session_id,
                     "user_id": transaction["user_id"],
                     "user_email": transaction["user_email"],
                     "items": transaction["items"],
+                    "subtotal": transaction.get("subtotal", transaction["amount"]),
+                    "discount": transaction.get("discount", 0),
+                    "coupon_code": transaction.get("coupon_code"),
                     "total": transaction["amount"],
                     "currency": "usd",
                     "status": "confirmed",
                     "payment_status": "paid",
+                    "tracking_number": None,
+                    "tracking_url": None,
                     "created_at": datetime.now(timezone.utc)
                 })
                 # Clear cart
@@ -708,11 +875,21 @@ async def startup_event():
         await db.products.insert_many(products)
         logger.info("Products seeded")
     
+    # Seed coupons
+    if await db.coupons.count_documents({}) == 0:
+        coupons = [
+            {"code": "WELCOME10", "discount_type": "percentage", "discount_value": 10, "min_order": 50, "max_uses": 1000, "used_count": 0, "expires_at": datetime(2026, 12, 31, tzinfo=timezone.utc), "is_active": True, "created_at": datetime.now(timezone.utc)},
+            {"code": "SAVE20", "discount_type": "percentage", "discount_value": 20, "min_order": 100, "max_uses": 500, "used_count": 0, "expires_at": datetime(2026, 12, 31, tzinfo=timezone.utc), "is_active": True, "created_at": datetime.now(timezone.utc)},
+            {"code": "FLAT50", "discount_type": "fixed", "discount_value": 50, "min_order": 200, "max_uses": 200, "used_count": 0, "expires_at": datetime(2026, 12, 31, tzinfo=timezone.utc), "is_active": True, "created_at": datetime.now(timezone.utc)},
+        ]
+        await db.coupons.insert_many(coupons)
+        logger.info("Coupons seeded")
+    
     # Write test credentials
     import pathlib
     pathlib.Path("/app/memory").mkdir(exist_ok=True)
     with open("/app/memory/test_credentials.md", "w") as f:
-        f.write(f"# Test Credentials\n\n## Admin\n- Email: {admin_email}\n- Password: {admin_password}\n- Role: admin\n\n## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/logout\n- GET /api/auth/me\n")
+        f.write(f"# Test Credentials\n\n## Admin\n- Email: {admin_email}\n- Password: {admin_password}\n- Role: admin\n\n## Coupon Codes\n- WELCOME10: 10% off (min $50)\n- SAVE20: 20% off (min $100)\n- FLAT50: $50 off (min $200)\n\n## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/logout\n- GET /api/auth/me\n")
     logger.info("Test credentials written")
 
 @app.on_event("shutdown")

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, ShoppingCart, Users, DollarSign, Plus, Pencil, Trash2, ArrowLeft } from 'lucide-react';
+import { Package, ShoppingCart, Users, DollarSign, Plus, Pencil, Trash2, ArrowLeft, Tag, Truck } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -27,21 +27,35 @@ const api = axios.create({
 
 const AdminPage = () => {
   const { user, loading: authLoading } = useAuth();
-  const { t, getLocalizedName } = useLanguage();
+  const { t, lang, getLocalizedName } = useLanguage();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState(null);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [couponDialogOpen, setCouponDialogOpen] = useState(false);
+  const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   // Product form state
   const [productForm, setProductForm] = useState({
     name_en: '', name_ar: '', description_en: '', description_ar: '',
     price: '', category_id: '', image_url: '', stock: '100', featured: false
+  });
+
+  // Coupon form state
+  const [couponForm, setCouponForm] = useState({
+    code: '', discount_type: 'percentage', discount_value: '', min_order: '0', max_uses: '100'
+  });
+
+  // Tracking form state
+  const [trackingForm, setTrackingForm] = useState({
+    status: '', tracking_number: '', tracking_url: ''
   });
 
   useEffect(() => {
@@ -52,16 +66,18 @@ const AdminPage = () => {
 
     const fetchData = async () => {
       try {
-        const [statsRes, productsRes, categoriesRes, ordersRes] = await Promise.all([
+        const [statsRes, productsRes, categoriesRes, ordersRes, couponsRes] = await Promise.all([
           api.get('/api/admin/stats'),
           api.get('/api/products?limit=100'),
           api.get('/api/categories'),
-          api.get('/api/admin/orders')
+          api.get('/api/admin/orders'),
+          api.get('/api/coupons')
         ]);
         setStats(statsRes.data);
         setProducts(productsRes.data.products);
         setCategories(categoriesRes.data);
         setOrders(ordersRes.data);
+        setCoupons(couponsRes.data);
       } catch (e) {
         console.error('Failed to fetch admin data:', e);
       } finally {
@@ -138,6 +154,60 @@ const AdminPage = () => {
       setOrders(orders.map(o => o.id === orderId ? { ...o, status } : o));
     } catch (e) {
       alert(e.response?.data?.detail || 'Failed to update order');
+    }
+  };
+
+  const handleOpenTrackingDialog = (order) => {
+    setSelectedOrder(order);
+    setTrackingForm({
+      status: order.status,
+      tracking_number: order.tracking_number || '',
+      tracking_url: order.tracking_url || ''
+    });
+    setTrackingDialogOpen(true);
+  };
+
+  const handleSaveTracking = async () => {
+    if (!selectedOrder) return;
+    try {
+      await api.put(`/api/admin/orders/${selectedOrder.id}/status?status=${trackingForm.status}&tracking_number=${trackingForm.tracking_number}&tracking_url=${encodeURIComponent(trackingForm.tracking_url)}`);
+      setOrders(orders.map(o => o.id === selectedOrder.id ? { 
+        ...o, 
+        status: trackingForm.status,
+        tracking_number: trackingForm.tracking_number,
+        tracking_url: trackingForm.tracking_url
+      } : o));
+      setTrackingDialogOpen(false);
+    } catch (e) {
+      alert(e.response?.data?.detail || 'Failed to update tracking');
+    }
+  };
+
+  const handleCreateCoupon = async () => {
+    try {
+      const data = {
+        code: couponForm.code,
+        discount_type: couponForm.discount_type,
+        discount_value: parseFloat(couponForm.discount_value),
+        min_order: parseFloat(couponForm.min_order) || 0,
+        max_uses: parseInt(couponForm.max_uses) || 100
+      };
+      const { data: newCoupon } = await api.post('/api/admin/coupons', data);
+      setCoupons([...coupons, { ...data, id: newCoupon.id, used_count: 0, is_active: true }]);
+      setCouponDialogOpen(false);
+      setCouponForm({ code: '', discount_type: 'percentage', discount_value: '', min_order: '0', max_uses: '100' });
+    } catch (e) {
+      alert(e.response?.data?.detail || 'Failed to create coupon');
+    }
+  };
+
+  const handleDeleteCoupon = async (couponId) => {
+    if (!confirm('Are you sure you want to delete this coupon?')) return;
+    try {
+      await api.delete(`/api/admin/coupons/${couponId}`);
+      setCoupons(coupons.filter(c => c.id !== couponId));
+    } catch (e) {
+      alert(e.response?.data?.detail || 'Failed to delete coupon');
     }
   };
 
@@ -218,6 +288,7 @@ const AdminPage = () => {
           <TabsList>
             <TabsTrigger value="products" data-testid="tab-products">{t('manageProducts')}</TabsTrigger>
             <TabsTrigger value="orders" data-testid="tab-orders">{t('manageOrders')}</TabsTrigger>
+            <TabsTrigger value="coupons" data-testid="tab-coupons">{lang === 'ar' ? 'الكوبونات' : 'Coupons'}</TabsTrigger>
           </TabsList>
 
           {/* Products Tab */}
@@ -391,19 +462,148 @@ const AdminPage = () => {
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-gray-500">
                           {new Date(order.created_at).toLocaleDateString()} • {order.items.length} items
+                          {order.tracking_number && <span className="ms-2 text-blue-600">• {lang === 'ar' ? 'تم الشحن' : 'Shipped'}</span>}
                         </p>
-                        <Select value={order.status} onValueChange={(v) => handleUpdateOrderStatus(order.id, v)}>
-                          <SelectTrigger className="w-32" data-testid={`order-status-${order.id}`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="confirmed">Confirmed</SelectItem>
-                            <SelectItem value="shipped">Shipped</SelectItem>
-                            <SelectItem value="delivered">Delivered</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenTrackingDialog(order)}
+                            data-testid={`tracking-btn-${order.id}`}
+                          >
+                            <Truck className="h-4 w-4 me-1" />
+                            {lang === 'ar' ? 'تتبع' : 'Track'}
+                          </Button>
+                          <Select value={order.status} onValueChange={(v) => handleUpdateOrderStatus(order.id, v)}>
+                            <SelectTrigger className="w-32" data-testid={`order-status-${order.id}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="confirmed">Confirmed</SelectItem>
+                              <SelectItem value="shipped">Shipped</SelectItem>
+                              <SelectItem value="delivered">Delivered</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Coupons Tab */}
+          <TabsContent value="coupons">
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="font-medium">{lang === 'ar' ? 'إدارة الكوبونات' : 'Manage Coupons'}</h2>
+                <Dialog open={couponDialogOpen} onOpenChange={setCouponDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-black text-white hover:bg-gray-800 rounded-full" data-testid="add-coupon-btn">
+                      <Plus className="me-2 h-4 w-4" />
+                      {lang === 'ar' ? 'إضافة كوبون' : 'Add Coupon'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{lang === 'ar' ? 'إضافة كوبون جديد' : 'Add New Coupon'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div>
+                        <Label>{lang === 'ar' ? 'كود الكوبون' : 'Coupon Code'}</Label>
+                        <Input
+                          value={couponForm.code}
+                          onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
+                          placeholder="e.g., SAVE20"
+                          data-testid="coupon-code-input"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>{lang === 'ar' ? 'نوع الخصم' : 'Discount Type'}</Label>
+                          <Select value={couponForm.discount_type} onValueChange={(v) => setCouponForm({ ...couponForm, discount_type: v })}>
+                            <SelectTrigger data-testid="coupon-type-select">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="percentage">{lang === 'ar' ? 'نسبة مئوية' : 'Percentage'}</SelectItem>
+                              <SelectItem value="fixed">{lang === 'ar' ? 'مبلغ ثابت' : 'Fixed Amount'}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>{lang === 'ar' ? 'قيمة الخصم' : 'Discount Value'}</Label>
+                          <Input
+                            type="number"
+                            value={couponForm.discount_value}
+                            onChange={(e) => setCouponForm({ ...couponForm, discount_value: e.target.value })}
+                            placeholder={couponForm.discount_type === 'percentage' ? '20' : '50'}
+                            data-testid="coupon-value-input"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>{lang === 'ar' ? 'الحد الأدنى للطلب ($)' : 'Min Order ($)'}</Label>
+                          <Input
+                            type="number"
+                            value={couponForm.min_order}
+                            onChange={(e) => setCouponForm({ ...couponForm, min_order: e.target.value })}
+                            data-testid="coupon-min-order"
+                          />
+                        </div>
+                        <div>
+                          <Label>{lang === 'ar' ? 'الحد الأقصى للاستخدام' : 'Max Uses'}</Label>
+                          <Input
+                            type="number"
+                            value={couponForm.max_uses}
+                            onChange={(e) => setCouponForm({ ...couponForm, max_uses: e.target.value })}
+                            data-testid="coupon-max-uses"
+                          />
+                        </div>
+                      </div>
+                      <Button onClick={handleCreateCoupon} className="bg-black text-white hover:bg-gray-800" data-testid="save-coupon-btn">
+                        {t('save')}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              <div className="divide-y divide-gray-200">
+                {coupons.length === 0 ? (
+                  <p className="p-8 text-center text-gray-500">{lang === 'ar' ? 'لا توجد كوبونات' : 'No coupons yet'}</p>
+                ) : (
+                  coupons.map((coupon) => (
+                    <div key={coupon.id} className="p-4 flex items-center justify-between" data-testid={`coupon-${coupon.id}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center">
+                          <Tag className="h-5 w-5 text-rose-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{coupon.code}</p>
+                          <p className="text-sm text-gray-500">
+                            {coupon.discount_type === 'percentage' ? `${coupon.discount_value}%` : `$${coupon.discount_value}`} off
+                            {coupon.min_order > 0 && ` • Min $${coupon.min_order}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-gray-500">
+                          {coupon.used_count || 0}/{coupon.max_uses} {lang === 'ar' ? 'استخدام' : 'uses'}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500 hover:text-red-600"
+                          onClick={() => handleDeleteCoupon(coupon.id)}
+                          data-testid={`delete-coupon-${coupon.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   ))
@@ -412,6 +612,53 @@ const AdminPage = () => {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Tracking Dialog */}
+        <Dialog open={trackingDialogOpen} onOpenChange={setTrackingDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{lang === 'ar' ? 'تحديث معلومات التتبع' : 'Update Tracking Info'}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div>
+                <Label>{lang === 'ar' ? 'حالة الطلب' : 'Order Status'}</Label>
+                <Select value={trackingForm.status} onValueChange={(v) => setTrackingForm({ ...trackingForm, status: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="shipped">Shipped</SelectItem>
+                    <SelectItem value="delivered">Delivered</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>{lang === 'ar' ? 'رقم التتبع' : 'Tracking Number'}</Label>
+                <Input
+                  value={trackingForm.tracking_number}
+                  onChange={(e) => setTrackingForm({ ...trackingForm, tracking_number: e.target.value })}
+                  placeholder="e.g., 1Z999AA10123456784"
+                  data-testid="tracking-number-input"
+                />
+              </div>
+              <div>
+                <Label>{lang === 'ar' ? 'رابط التتبع' : 'Tracking URL'}</Label>
+                <Input
+                  value={trackingForm.tracking_url}
+                  onChange={(e) => setTrackingForm({ ...trackingForm, tracking_url: e.target.value })}
+                  placeholder="https://..."
+                  data-testid="tracking-url-input"
+                />
+              </div>
+              <Button onClick={handleSaveTracking} className="bg-black text-white hover:bg-gray-800" data-testid="save-tracking-btn">
+                {t('save')}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

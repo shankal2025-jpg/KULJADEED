@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package } from 'lucide-react';
+import { Package, Truck, ExternalLink } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Skeleton } from '../components/ui/skeleton';
+import { Button } from '../components/ui/button';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -103,6 +104,38 @@ const OrdersPage = () => {
                     </div>
                   ))}
                 </div>
+
+                {/* Discount info */}
+                {order.discount > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">{lang === 'ar' ? 'الخصم' : 'Discount'} ({order.coupon_code})</span>
+                      <span className="text-green-600">-${order.discount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tracking info */}
+                {order.tracking_number && (
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                    <div className="flex items-center gap-2 text-blue-800">
+                      <Truck className="h-4 w-4" />
+                      <span className="text-sm font-medium">{lang === 'ar' ? 'رقم التتبع' : 'Tracking'}:</span>
+                      <span className="text-sm">{order.tracking_number}</span>
+                      {order.tracking_url && (
+                        <a 
+                          href={order.tracking_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="ms-auto flex items-center gap-1 text-xs font-medium hover:underline"
+                        >
+                          {lang === 'ar' ? 'تتبع الشحنة' : 'Track'}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
