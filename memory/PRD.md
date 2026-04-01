@@ -1,96 +1,76 @@
-# كل جديد KULJADEED - E-Commerce Store
+# كل جديد KULJADEED - E-Commerce Store (Complete)
 
-## Original Problem Statement
-Build a bilingual (Arabic/English) e-commerce store "كل جديد KULJADEED" with:
-- Multi-category products
+## Problem Statement
+Bilingual e-commerce store with all premium features including:
+- Multi-category products with variants
 - Stripe payment integration
-- User authentication
+- User authentication with rewards
 - Admin dashboard
 - Shopping cart with coupon codes
-- Search and filter
-- Product ratings/reviews
 - Wishlist functionality
 - Order tracking
-- Bilingual support (Arabic and English) with RTL
+- Promotional banners carousel
+- Reward points system
+- Email notifications
 
 ## Architecture
-### Backend (FastAPI + MongoDB)
-- `/app/backend/server.py` - Main API server
-- Authentication: JWT with HTTP-only cookies, brute force protection
-- Collections: users, products, categories, carts, orders, reviews, wishlists, coupons, payment_transactions
+### Backend (FastAPI + MongoDB + Resend)
+- Authentication: JWT with 24-hour sessions
+- Collections: users, products, categories, carts, orders, reviews, wishlists, coupons, banners, reward_history, payment_transactions
+- Email: Resend integration (requires API key)
 
 ### Frontend (React + Tailwind CSS)
-- Context: AuthContext, CartContext, LanguageContext
-- Pages: Home, Products, ProductDetail, Login, Register, Orders, Wishlist, Admin, CheckoutSuccess
-- Components: Header, ProductCard, CartSheet (with coupon input)
+- Pages: Home, Products, ProductDetail, Login, Register, Orders, Wishlist, Rewards, Admin, CheckoutSuccess
+- Features: RTL support, banner carousel, reward points, coupon system
 
-## What's Been Implemented (April 1, 2026)
-### Phase 1 (MVP)
-- [x] User authentication (register, login, logout)
-- [x] Product catalog with 4 categories
-- [x] Shopping cart with quantity controls
+## Implemented Features
+### Core E-commerce
+- [x] Product catalog with 4 categories, 6 products
+- [x] Shopping cart with quantity management
 - [x] Stripe checkout integration
-- [x] Admin dashboard with stats
-- [x] Product CRUD for admin
-- [x] Product reviews/ratings
-- [x] Bilingual (EN/AR) with RTL support
+- [x] Order management with tracking
+- [x] Product reviews and ratings
 - [x] Search and filter products
+- [x] Bilingual (EN/AR) with RTL
 
-### Phase 2 (Enhancements)
+### User Features
+- [x] Registration and login
 - [x] Wishlist functionality
-- [x] Coupon codes system (WELCOME10, SAVE20, FLAT50)
-- [x] Order tracking with tracking number/URL
-- [x] Admin coupon management
-- [x] Admin order tracking updates
-- [x] KULJADEED branding (rose-orange gradient)
+- [x] Reward points (1 point = $0.01)
+- [x] Point redemption for discount coupons
+- [x] Order history with tracking info
+
+### Admin Features
+- [x] Dashboard with stats
+- [x] Product CRUD
+- [x] Order management with tracking
+- [x] Coupon management
+- [x] Banner management
+
+### Marketing Features
+- [x] Promotional banners carousel (auto-rotate)
+- [x] Coupon codes (WELCOME10, SAVE20, FLAT50)
+- [x] Reward points program
+- [x] Email notifications (ready for Resend API)
 
 ## Test Credentials
 - Admin: admin@store.com / Admin123!
-- Coupons: WELCOME10 (10% off $50+), SAVE20 (20% off $100+), FLAT50 ($50 off $200+)
+- Coupons: WELCOME10 (10%), SAVE20 (20%), FLAT50 ($50)
 
-## API Endpoints
-### Auth
-- POST /api/auth/register
-- POST /api/auth/login
-- POST /api/auth/logout
-- GET /api/auth/me
+## API Endpoints Summary
+- Auth: /api/auth/* (register, login, logout, me, refresh, forgot-password, reset-password)
+- Products: /api/products/* (list, detail, admin CRUD)
+- Cart: /api/cart/* (get, add, update, remove, clear)
+- Wishlist: /api/wishlist/* (get, add, remove)
+- Orders: /api/orders/* (list, detail, admin list, update status)
+- Coupons: /api/coupons/* (validate, admin CRUD)
+- Banners: /api/banners (public), /api/admin/banners (CRUD)
+- Rewards: /api/rewards (balance & history), /api/rewards/redeem
+- Checkout: /api/checkout, /api/checkout/status/{id}
 
-### Products
-- GET /api/products (with search, category, sort, pagination)
-- GET /api/products/:id
-- POST /api/admin/products
-- PUT /api/admin/products/:id
-- DELETE /api/admin/products/:id
-
-### Cart
-- GET /api/cart
-- POST /api/cart/add
-- PUT /api/cart/update
-- DELETE /api/cart/remove/:id
-
-### Wishlist
-- GET /api/wishlist
-- POST /api/wishlist/add
-- DELETE /api/wishlist/remove/:id
-
-### Coupons
-- GET /api/coupons (admin)
-- POST /api/coupons/validate
-- POST /api/admin/coupons
-- DELETE /api/admin/coupons/:id
-
-### Orders
-- GET /api/orders
-- GET /api/admin/orders
-- PUT /api/admin/orders/:id/status
-
-### Checkout
-- POST /api/checkout (with coupon support)
-- GET /api/checkout/status/:session_id
-
-## Next Tasks
-1. Email notifications for orders
-2. Multiple product images gallery
-3. Product variants (size, color)
-4. Promotional banners
-5. Customer reviews moderation
+## Next Tasks (Phase 3)
+1. Multiple product images gallery
+2. Product variants (size, color)
+3. Social login (Google, Apple)
+4. Product comparison
+5. Push notifications
