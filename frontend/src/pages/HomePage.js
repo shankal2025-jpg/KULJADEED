@@ -1,0 +1,158 @@
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Smartphone, Shirt, Sparkles, Home as HomeIcon, ChevronRight } from 'lucide-react';
+import axios from 'axios';
+import { useLanguage } from '../context/LanguageContext';
+import ProductCard from '../components/ProductCard';
+import { Button } from '../components/ui/button';
+import { Skeleton } from '../components/ui/skeleton';
+
+const API = process.env.REACT_APP_BACKEND_URL;
+
+const iconMap = {
+  Smartphone: Smartphone,
+  Shirt: Shirt,
+  Sparkles: Sparkles,
+  Home: HomeIcon,
+};
+
+const HomePage = () => {
+  const { t, getLocalizedName } = useLanguage();
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [productsRes, categoriesRes] = await Promise.all([
+          axios.get(`${API}/api/products?featured=true&limit=4`),
+          axios.get(`${API}/api/categories`)
+        ]);
+        setProducts(productsRes.data.products);
+        setCategories(categoriesRes.data);
+      } catch (e) {
+        console.error('Failed to fetch data:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#F8F9FA]">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1760172287483-02d382f63a6f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTJ8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGx1eHVyeSUyMGdyYWRpZW50JTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NzUwNDkwNzl8MA&ixlib=rb-4.1.0&q=85)' }}
+        />
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
+          <div className="max-w-2xl">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-white tracking-tight leading-tight">
+              {t('heroTitle')}
+            </h1>
+            <p className="mt-6 text-lg text-white/80 leading-relaxed">
+              {t('heroSubtitle')}
+            </p>
+            <Link to="/products">
+              <Button 
+                className="mt-8 bg-white text-black hover:bg-gray-100 rounded-full px-8 py-6 text-lg font-medium"
+                data-testid="shop-now-btn"
+              >
+                {t('shopNow')}
+                <ArrowRight className="ms-2 h-5 w-5" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Categories Bento Grid */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">{t('categories')}</h2>
+        </div>
+        
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-32 rounded-xl" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {categories.map((category) => {
+              const IconComponent = iconMap[category.icon] || Smartphone;
+              return (
+                <Link
+                  key={category.id}
+                  to={`/products?category=${category.id}`}
+                  className="group bg-white border border-gray-200 rounded-xl p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-gray-300"
+                  data-testid={`category-${category.id}`}
+                >
+                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-colors">
+                    <IconComponent className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-medium text-start">{getLocalizedName(category)}</h3>
+                  <div className="flex items-center gap-1 mt-2 text-sm text-gray-500 group-hover:text-black transition-colors">
+                    <span>{t('shopNow')}</span>
+                    <ChevronRight className="h-4 w-4 rtl:rotate-180" />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Featured Products */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">{t('featuredProducts')}</h2>
+          <Link to="/products" className="flex items-center gap-1 text-sm font-medium hover:text-gray-600 transition-colors" data-testid="view-all-link">
+            {t('viewAll')}
+            <ChevronRight className="h-4 w-4 rtl:rotate-180" />
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="space-y-3">
+                <Skeleton className="aspect-square rounded-xl" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-black text-white py-12 mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                <span className="text-black font-bold text-lg">S</span>
+              </div>
+              <span className="font-display text-xl font-bold">Store</span>
+            </div>
+            <p className="text-gray-400 text-sm">© 2024 Store. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default HomePage;
