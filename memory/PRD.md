@@ -1,95 +1,96 @@
-# E-Commerce Store - Product Requirements Document
+# كل جديد KULJADEED - E-Commerce Store
 
 ## Original Problem Statement
-Build a bilingual (Arabic/English) e-commerce store with:
+Build a bilingual (Arabic/English) e-commerce store "كل جديد KULJADEED" with:
 - Multi-category products
-- Stripe payment integration for card payments
-- User authentication (login/register)
-- Admin dashboard for managing products
-- Shopping cart functionality
-- Search and filter products
+- Stripe payment integration
+- User authentication
+- Admin dashboard
+- Shopping cart with coupon codes
+- Search and filter
 - Product ratings/reviews
-- Bilingual support (Arabic and English)
+- Wishlist functionality
+- Order tracking
+- Bilingual support (Arabic and English) with RTL
 
 ## Architecture
 ### Backend (FastAPI + MongoDB)
 - `/app/backend/server.py` - Main API server
-- Authentication: JWT tokens with HTTP-only cookies
-- Database: MongoDB with collections for users, products, categories, carts, orders, reviews, payment_transactions
-- Payment: Stripe integration using emergentintegrations library
+- Authentication: JWT with HTTP-only cookies, brute force protection
+- Collections: users, products, categories, carts, orders, reviews, wishlists, coupons, payment_transactions
 
 ### Frontend (React + Tailwind CSS)
-- `/app/frontend/src/` - React application
-- Context providers: AuthContext, CartContext, LanguageContext
-- Pages: Home, Products, ProductDetail, Login, Register, Orders, Admin, CheckoutSuccess
-- Components: Header, ProductCard, CartSheet
-- UI: Shadcn/UI components
-
-## User Personas
-1. **Customer** - Browse products, add to cart, checkout with Stripe
-2. **Admin** - Manage products, categories, view orders, see dashboard stats
-
-## Core Requirements (Static)
-- [x] User registration and login
-- [x] Product catalog with categories
-- [x] Shopping cart with quantity management
-- [x] Stripe checkout integration
-- [x] Admin dashboard with stats
-- [x] Product management (CRUD)
-- [x] Order management
-- [x] Product reviews and ratings
-- [x] Bilingual support (EN/AR) with RTL
-- [x] Search and filter products
+- Context: AuthContext, CartContext, LanguageContext
+- Pages: Home, Products, ProductDetail, Login, Register, Orders, Wishlist, Admin, CheckoutSuccess
+- Components: Header, ProductCard, CartSheet (with coupon input)
 
 ## What's Been Implemented (April 1, 2026)
-### Backend
-- JWT authentication with HTTP-only cookies
-- Brute force protection for login
-- User management (registration, login, logout, password reset)
-- Categories API (CRUD)
-- Products API (CRUD, search, filter, pagination)
-- Cart API (add, update, remove, clear)
-- Reviews API (create, list)
-- Orders API (list user orders, admin list all, update status)
-- Admin Stats API
-- Stripe Checkout integration
-- Payment status polling
-- Webhook handler for Stripe
+### Phase 1 (MVP)
+- [x] User authentication (register, login, logout)
+- [x] Product catalog with 4 categories
+- [x] Shopping cart with quantity controls
+- [x] Stripe checkout integration
+- [x] Admin dashboard with stats
+- [x] Product CRUD for admin
+- [x] Product reviews/ratings
+- [x] Bilingual (EN/AR) with RTL support
+- [x] Search and filter products
 
-### Frontend
-- Responsive design with Tailwind CSS
-- Language toggle (English/Arabic) with RTL support
-- Authentication flows (login, register)
-- Product browsing with categories
-- Product detail pages with reviews
-- Shopping cart slide-over panel
-- Checkout flow with Stripe redirect
-- Order history page
-- Admin dashboard with product management
+### Phase 2 (Enhancements)
+- [x] Wishlist functionality
+- [x] Coupon codes system (WELCOME10, SAVE20, FLAT50)
+- [x] Order tracking with tracking number/URL
+- [x] Admin coupon management
+- [x] Admin order tracking updates
+- [x] KULJADEED branding (rose-orange gradient)
 
 ## Test Credentials
 - Admin: admin@store.com / Admin123!
+- Coupons: WELCOME10 (10% off $50+), SAVE20 (20% off $100+), FLAT50 ($50 off $200+)
 
-## Prioritized Backlog
-### P0 (Critical) - COMPLETED
-- Core shopping flow
-- Authentication
-- Payment integration
+## API Endpoints
+### Auth
+- POST /api/auth/register
+- POST /api/auth/login
+- POST /api/auth/logout
+- GET /api/auth/me
 
-### P1 (High)
-- Email notifications for orders
-- Order tracking
-- Inventory management alerts
+### Products
+- GET /api/products (with search, category, sort, pagination)
+- GET /api/products/:id
+- POST /api/admin/products
+- PUT /api/admin/products/:id
+- DELETE /api/admin/products/:id
 
-### P2 (Medium)
-- Wishlist feature
-- Product comparison
-- Advanced search filters
-- Customer reviews moderation
+### Cart
+- GET /api/cart
+- POST /api/cart/add
+- PUT /api/cart/update
+- DELETE /api/cart/remove/:id
+
+### Wishlist
+- GET /api/wishlist
+- POST /api/wishlist/add
+- DELETE /api/wishlist/remove/:id
+
+### Coupons
+- GET /api/coupons (admin)
+- POST /api/coupons/validate
+- POST /api/admin/coupons
+- DELETE /api/admin/coupons/:id
+
+### Orders
+- GET /api/orders
+- GET /api/admin/orders
+- PUT /api/admin/orders/:id/status
+
+### Checkout
+- POST /api/checkout (with coupon support)
+- GET /api/checkout/status/:session_id
 
 ## Next Tasks
-1. Add email notifications for order confirmation
-2. Implement order tracking status updates
-3. Add more product images/gallery
-4. Implement wishlist functionality
-5. Add promotional codes/discounts feature
+1. Email notifications for orders
+2. Multiple product images gallery
+3. Product variants (size, color)
+4. Promotional banners
+5. Customer reviews moderation
