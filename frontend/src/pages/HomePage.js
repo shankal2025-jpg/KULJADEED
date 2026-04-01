@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Smartphone, Shirt, Sparkles, Home as HomeIcon, ChevronRight } from 'lucide-react';
+import { ArrowRight, Smartphone, Shirt, Sparkles, Home as HomeIcon, ChevronRight, ChevronLeft, Star, Gift } from 'lucide-react';
 import axios from 'axios';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import ProductCard from '../components/ProductCard';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
@@ -24,19 +25,24 @@ const iconMap = {
 
 const HomePage = () => {
   const { t, lang, getLocalizedName } = useLanguage();
+  const { user } = useAuth();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [banners, setBanners] = useState([]);
+  const [currentBanner, setCurrentBanner] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [productsRes, categoriesRes] = await Promise.all([
+        const [productsRes, categoriesRes, bannersRes] = await Promise.all([
           api.get('/api/products?featured=true&limit=4'),
-          api.get('/api/categories')
+          api.get('/api/categories'),
+          api.get('/api/banners')
         ]);
         setProducts(productsRes.data.products);
         setCategories(categoriesRes.data);
+        setBanners(bannersRes.data);
       } catch (e) {
         console.error('Failed to fetch data:', e);
       } finally {
@@ -45,6 +51,18 @@ const HomePage = () => {
     };
     fetchData();
   }, []);
+
+  // Auto-rotate banners
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentBanner((prev) => (prev + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [banners.length]);
+
+  const nextBanner = () => setCurrentBanner((prev) => (prev + 1) % banners.length);
+  const prevBanner = () => setCurrentBanner((prev) => (prev - 1 + banners.length) % banners.length);
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
@@ -76,8 +94,101 @@ const HomePage = () => {
         </div>
       </section>
 
+      {/* Promotional Banners Carousel */}
+      {banners.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="relative overflow-hidden rounded-2xl">
+            <div 
+              className="flex transition-transform duration-500 ease-out"
+              style={{ transform: `translateX(-${currentBanner * 100}%)` }}
+            >
+              {banners.map((banner) => (
+                <Link 
+                  key={banner.id} 
+                  to={banner.link_url || '/products'}
+                  className="w-full flex-shrink-0 relative"
+                >
+                  <div className="aspect-[3/1] relative overflow-hidden rounded-2xl">
+                    <img
+                      src={banner.image_url}
+                      alt={lang === 'ar' ? banner.title_ar : banner.title_en}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+                    <div className="absolute inset-0 flex items-center p-8 md:p-12">
+                      <div className="text-white">
+                        <h3 className="text-2xl md:text-4xl font-display font-bold mb-2">
+                          {lang === 'ar' ? banner.title_ar : banner.title_en}
+                        </h3>
+                        {banner.subtitle_en && (
+                          <p className="text-white/80 text-sm md:text-lg">
+                            {lang === 'ar' ? banner.subtitle_ar : banner.subtitle_en}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            
+            {banners.length > 1 && (
+              <>
+                <button
+                  onClick={prevBanner}
+                  className="absolute start-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition-colors"
+                  data-testid="prev-banner-btn"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={nextBanner}
+                  className="absolute end-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition-colors"
+                  data-testid="next-banner-btn"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                  {banners.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentBanner(idx)}
+                      className={`w-2 h-2 rounded-full transition-colors ${
+                        idx === currentBanner ? 'bg-white' : 'bg-white/50'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Rewards Banner for logged-in users */}
+      {user && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+          <Link to="/rewards" className="block">
+            <div className="bg-gradient-to-r from-rose-500 to-orange-500 rounded-2xl p-6 flex items-center justify-between hover:opacity-95 transition-opacity">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Gift className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-white">
+                  <p className="font-bold">{lang === 'ar' ? 'نقاط المكافآت' : 'Reward Points'}</p>
+                  <p className="text-sm text-white/80">
+                    {lang === 'ar' ? 'اكسب نقاط مع كل عملية شراء' : 'Earn points with every purchase'}
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="h-6 w-6 text-white" />
+            </div>
+          </Link>
+        </section>
+      )}
+
       {/* Categories Bento Grid */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">{t('categories')}</h2>
         </div>

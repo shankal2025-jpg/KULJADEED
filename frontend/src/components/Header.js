@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, Menu, Globe, LogOut, Package, Settings, Heart } from 'lucide-react';
+import { ShoppingCart, User, Menu, Globe, LogOut, Package, Settings, Heart, Gift } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -89,6 +89,10 @@ const Header = () => {
                   <DropdownMenuItem onClick={() => navigate('/wishlist')} data-testid="wishlist-btn">
                     <Heart className="me-2 h-4 w-4" />
                     {lang === 'ar' ? 'قائمة الرغبات' : 'Wishlist'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/rewards')} data-testid="rewards-btn">
+                    <Gift className="me-2 h-4 w-4" />
+                    {lang === 'ar' ? 'نقاط المكافآت' : 'Rewards'}
                   </DropdownMenuItem>
                   {user.role === 'admin' && (
                     <DropdownMenuItem onClick={() => navigate('/admin')} data-testid="admin-btn">

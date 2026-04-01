@@ -11,6 +11,8 @@ import logging
 import bcrypt
 import jwt
 import secrets
+import asyncio
+import resend
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict
@@ -28,6 +30,12 @@ db = client[os.environ['DB_NAME']]
 # JWT Configuration
 JWT_SECRET = os.environ.get('JWT_SECRET', 'default-secret-change-me')
 JWT_ALGORITHM = "HS256"
+
+# Resend Configuration
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -127,6 +135,40 @@ class OrderStatusUpdate(BaseModel):
     tracking_number: Optional[str] = None
     tracking_url: Optional[str] = None
 
+# New Models for enhanced features
+class ProductVariant(BaseModel):
+    size: Optional[str] = None
+    color: Optional[str] = None
+    color_hex: Optional[str] = None
+    price_adjustment: float = 0
+    stock: int = 0
+
+class ProductCreateEnhanced(BaseModel):
+    name_en: str
+    name_ar: str
+    description_en: str
+    description_ar: str
+    price: float
+    category_id: str
+    images: List[str] = []  # Multiple images
+    image_url: str  # Primary image
+    stock: int = 100
+    featured: bool = False
+    variants: List[ProductVariant] = []
+
+class BannerCreate(BaseModel):
+    title_en: str
+    title_ar: str
+    subtitle_en: Optional[str] = None
+    subtitle_ar: Optional[str] = None
+    image_url: str
+    link_url: Optional[str] = None
+    is_active: bool = True
+    position: int = 0
+
+class RewardPointsRedeem(BaseModel):
+    points: int
+
 # ===================== HELPERS =====================
 
 def hash_password(password: str) -> str:
@@ -149,6 +191,86 @@ def serialize_doc(doc: dict) -> dict:
         return None
     doc["id"] = str(doc.pop("_id"))
     return doc
+
+async def send_order_email(to_email: str, order_id: str, items: list, total: float, discount: float = 0):
+    """Send order confirmation email"""
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not set, skipping email")
+        return
+    
+    items_html = "".join([
+        f"<tr><td style='padding:8px;border-bottom:1px solid #eee;'>{item['name']}</td>"
+        f"<td style='padding:8px;border-bottom:1px solid #eee;text-align:center;'>{item['quantity']}</td>"
+        f"<td style='padding:8px;border-bottom:1px solid #eee;text-align:right;'>${item['price']:.2f}</td></tr>"
+        for item in items
+    ])
+    
+    discount_html = ""
+    if discount > 0:
+        discount_html = f"<tr><td colspan='2' style='padding:8px;text-align:right;color:#16a34a;'>Discount:</td><td style='padding:8px;text-align:right;color:#16a34a;'>-${discount:.2f}</td></tr>"
+    
+    html_content = f"""
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+        <div style="text-align:center;margin-bottom:30px;">
+            <h1 style="color:#000;margin:0;">كل جديد KULJADEED</h1>
+            <p style="color:#666;margin-top:5px;">Thank you for your order!</p>
+        </div>
+        
+        <div style="background:#f9fafb;border-radius:12px;padding:20px;margin-bottom:20px;">
+            <h2 style="margin:0 0 15px 0;font-size:18px;">Order #{order_id[-8:].upper()}</h2>
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#000;color:#fff;">
+                        <th style="padding:10px;text-align:left;">Item</th>
+                        <th style="padding:10px;text-align:center;">Qty</th>
+                        <th style="padding:10px;text-align:right;">Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {items_html}
+                    {discount_html}
+                    <tr style="font-weight:bold;">
+                        <td colspan="2" style="padding:12px;text-align:right;">Total:</td>
+                        <td style="padding:12px;text-align:right;">${total:.2f}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <p style="color:#666;font-size:14px;text-align:center;">
+            You earned <strong>{int(total)}</strong> reward points from this purchase!
+        </p>
+        
+        <div style="text-align:center;margin-top:30px;padding-top:20px;border-top:1px solid #eee;">
+            <p style="color:#999;font-size:12px;">© 2024 KULJADEED. All rights reserved.</p>
+        </div>
+    </div>
+    """
+    
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [to_email],
+            "subject": f"Order Confirmation #{order_id[-8:].upper()} - KULJADEED",
+            "html": html_content
+        }
+        await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"Order confirmation email sent to {to_email}")
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+
+async def add_reward_points(user_id: str, points: int, description: str):
+    """Add reward points to user account"""
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$inc": {"reward_points": points}}
+    )
+    await db.reward_history.insert_one({
+        "user_id": user_id,
+        "points": points,
+        "description": description,
+        "created_at": datetime.now(timezone.utc)
+    })
 
 async def get_current_user(request: Request) -> dict:
     token = request.cookies.get("access_token")
@@ -627,6 +749,99 @@ async def validate_coupon(data: CouponApply, user: dict = Depends(get_current_us
         "min_order": coupon.get("min_order", 0)
     }
 
+# ===================== BANNER ROUTES =====================
+
+@api_router.get("/banners")
+async def get_banners():
+    banners = await db.banners.find({"is_active": True}).sort("position", 1).to_list(20)
+    return [serialize_doc(b) for b in banners]
+
+@api_router.get("/admin/banners")
+async def get_all_banners(user: dict = Depends(get_admin_user)):
+    banners = await db.banners.find({}).sort("position", 1).to_list(100)
+    return [serialize_doc(b) for b in banners]
+
+@api_router.post("/admin/banners")
+async def create_banner(data: BannerCreate, user: dict = Depends(get_admin_user)):
+    banner_doc = data.model_dump()
+    banner_doc["created_at"] = datetime.now(timezone.utc)
+    result = await db.banners.insert_one(banner_doc)
+    return {"id": str(result.inserted_id), **data.model_dump()}
+
+@api_router.put("/admin/banners/{banner_id}")
+async def update_banner(banner_id: str, data: BannerCreate, user: dict = Depends(get_admin_user)):
+    await db.banners.update_one({"_id": ObjectId(banner_id)}, {"$set": data.model_dump()})
+    return {"message": "Banner updated"}
+
+@api_router.delete("/admin/banners/{banner_id}")
+async def delete_banner(banner_id: str, user: dict = Depends(get_admin_user)):
+    await db.banners.delete_one({"_id": ObjectId(banner_id)})
+    return {"message": "Banner deleted"}
+
+# ===================== REWARD POINTS ROUTES =====================
+
+@api_router.get("/rewards")
+async def get_user_rewards(user: dict = Depends(get_current_user)):
+    user_data = await db.users.find_one({"_id": ObjectId(user["id"])})
+    points = user_data.get("reward_points", 0)
+    
+    # Get reward history
+    history = await db.reward_history.find({"user_id": user["id"]}).sort("created_at", -1).to_list(50)
+    
+    return {
+        "points": points,
+        "points_value": points * 0.01,  # 100 points = $1
+        "history": [serialize_doc(h) for h in history]
+    }
+
+@api_router.post("/rewards/redeem")
+async def redeem_rewards(data: RewardPointsRedeem, user: dict = Depends(get_current_user)):
+    user_data = await db.users.find_one({"_id": ObjectId(user["id"])})
+    current_points = user_data.get("reward_points", 0)
+    
+    if data.points > current_points:
+        raise HTTPException(status_code=400, detail="Insufficient points")
+    
+    if data.points < 100:
+        raise HTTPException(status_code=400, detail="Minimum 100 points required")
+    
+    # Create a discount coupon
+    discount_value = data.points * 0.01  # 100 points = $1
+    coupon_code = f"REWARD{secrets.token_hex(4).upper()}"
+    
+    await db.coupons.insert_one({
+        "code": coupon_code,
+        "discount_type": "fixed",
+        "discount_value": discount_value,
+        "min_order": 0,
+        "max_uses": 1,
+        "used_count": 0,
+        "expires_at": datetime.now(timezone.utc) + timedelta(days=30),
+        "is_active": True,
+        "user_id": user["id"],
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    # Deduct points
+    await db.users.update_one(
+        {"_id": ObjectId(user["id"])},
+        {"$inc": {"reward_points": -data.points}}
+    )
+    
+    await db.reward_history.insert_one({
+        "user_id": user["id"],
+        "points": -data.points,
+        "description": f"Redeemed for ${discount_value:.2f} discount coupon",
+        "coupon_code": coupon_code,
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    return {
+        "coupon_code": coupon_code,
+        "discount_value": discount_value,
+        "message": f"Redeemed {data.points} points for ${discount_value:.2f} discount"
+    }
+
 # ===================== PAYMENT ROUTES =====================
 
 @api_router.post("/checkout")
@@ -755,6 +970,23 @@ async def get_checkout_status(session_id: str, user: dict = Depends(get_current_
                 })
                 # Clear cart
                 await db.carts.delete_one({"user_id": transaction["user_id"]})
+                
+                # Add reward points (1 point per $1 spent)
+                reward_points = int(transaction["amount"])
+                await add_reward_points(
+                    transaction["user_id"],
+                    reward_points,
+                    f"Order #{session_id[-8:].upper()} - Earned {reward_points} points"
+                )
+                
+                # Send order confirmation email
+                await send_order_email(
+                    transaction["user_email"],
+                    session_id,
+                    transaction["items"],
+                    transaction["amount"],
+                    transaction.get("discount", 0)
+                )
     
     return {
         "status": status.status,
@@ -884,6 +1116,46 @@ async def startup_event():
         ]
         await db.coupons.insert_many(coupons)
         logger.info("Coupons seeded")
+    
+    # Seed banners
+    if await db.banners.count_documents({}) == 0:
+        banners = [
+            {
+                "title_en": "New Arrivals",
+                "title_ar": "وصل حديثاً",
+                "subtitle_en": "Discover our latest collection of premium products",
+                "subtitle_ar": "اكتشف أحدث مجموعتنا من المنتجات الفاخرة",
+                "image_url": "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&h=400&fit=crop",
+                "link_url": "/products?sort=newest",
+                "is_active": True,
+                "position": 0,
+                "created_at": datetime.now(timezone.utc)
+            },
+            {
+                "title_en": "Summer Sale",
+                "title_ar": "تخفيضات الصيف",
+                "subtitle_en": "Up to 50% off on selected items",
+                "subtitle_ar": "خصم يصل إلى 50% على منتجات مختارة",
+                "image_url": "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1200&h=400&fit=crop",
+                "link_url": "/products",
+                "is_active": True,
+                "position": 1,
+                "created_at": datetime.now(timezone.utc)
+            },
+            {
+                "title_en": "Earn Rewards",
+                "title_ar": "اكسب المكافآت",
+                "subtitle_en": "Get 1 point for every $1 spent",
+                "subtitle_ar": "احصل على نقطة واحدة لكل دولار تنفقه",
+                "image_url": "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1200&h=400&fit=crop",
+                "link_url": "/rewards",
+                "is_active": True,
+                "position": 2,
+                "created_at": datetime.now(timezone.utc)
+            }
+        ]
+        await db.banners.insert_many(banners)
+        logger.info("Banners seeded")
     
     # Write test credentials
     import pathlib

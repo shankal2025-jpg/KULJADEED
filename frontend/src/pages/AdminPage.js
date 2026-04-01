@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, ShoppingCart, Users, DollarSign, Plus, Pencil, Trash2, ArrowLeft, Tag, Truck } from 'lucide-react';
+import { Package, ShoppingCart, Users, DollarSign, Plus, Pencil, Trash2, ArrowLeft, Tag, Truck, Image } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -35,10 +35,12 @@ const AdminPage = () => {
   const [categories, setCategories] = useState([]);
   const [orders, setOrders] = useState([]);
   const [coupons, setCoupons] = useState([]);
+  const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [couponDialogOpen, setCouponDialogOpen] = useState(false);
+  const [bannerDialogOpen, setBannerDialogOpen] = useState(false);
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
@@ -58,6 +60,12 @@ const AdminPage = () => {
     status: '', tracking_number: '', tracking_url: ''
   });
 
+  // Banner form state
+  const [bannerForm, setBannerForm] = useState({
+    title_en: '', title_ar: '', subtitle_en: '', subtitle_ar: '',
+    image_url: '', link_url: '', is_active: true, position: 0
+  });
+
   useEffect(() => {
     if (!authLoading && (!user || user.role !== 'admin')) {
       navigate('/');
@@ -66,18 +74,20 @@ const AdminPage = () => {
 
     const fetchData = async () => {
       try {
-        const [statsRes, productsRes, categoriesRes, ordersRes, couponsRes] = await Promise.all([
+        const [statsRes, productsRes, categoriesRes, ordersRes, couponsRes, bannersRes] = await Promise.all([
           api.get('/api/admin/stats'),
           api.get('/api/products?limit=100'),
           api.get('/api/categories'),
           api.get('/api/admin/orders'),
-          api.get('/api/coupons')
+          api.get('/api/coupons'),
+          api.get('/api/admin/banners')
         ]);
         setStats(statsRes.data);
         setProducts(productsRes.data.products);
         setCategories(categoriesRes.data);
         setOrders(ordersRes.data);
         setCoupons(couponsRes.data);
+        setBanners(bannersRes.data);
       } catch (e) {
         console.error('Failed to fetch admin data:', e);
       } finally {
@@ -211,6 +221,27 @@ const AdminPage = () => {
     }
   };
 
+  const handleCreateBanner = async () => {
+    try {
+      const { data: newBanner } = await api.post('/api/admin/banners', bannerForm);
+      setBanners([...banners, { ...bannerForm, id: newBanner.id }]);
+      setBannerDialogOpen(false);
+      setBannerForm({ title_en: '', title_ar: '', subtitle_en: '', subtitle_ar: '', image_url: '', link_url: '', is_active: true, position: 0 });
+    } catch (e) {
+      alert(e.response?.data?.detail || 'Failed to create banner');
+    }
+  };
+
+  const handleDeleteBanner = async (bannerId) => {
+    if (!confirm('Are you sure you want to delete this banner?')) return;
+    try {
+      await api.delete(`/api/admin/banners/${bannerId}`);
+      setBanners(banners.filter(b => b.id !== bannerId));
+    } catch (e) {
+      alert(e.response?.data?.detail || 'Failed to delete banner');
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-[#F8F9FA]">
@@ -289,6 +320,7 @@ const AdminPage = () => {
             <TabsTrigger value="products" data-testid="tab-products">{t('manageProducts')}</TabsTrigger>
             <TabsTrigger value="orders" data-testid="tab-orders">{t('manageOrders')}</TabsTrigger>
             <TabsTrigger value="coupons" data-testid="tab-coupons">{lang === 'ar' ? 'الكوبونات' : 'Coupons'}</TabsTrigger>
+            <TabsTrigger value="banners" data-testid="tab-banners">{lang === 'ar' ? 'البانرات' : 'Banners'}</TabsTrigger>
           </TabsList>
 
           {/* Products Tab */}
@@ -601,6 +633,129 @@ const AdminPage = () => {
                           className="text-red-500 hover:text-red-600"
                           onClick={() => handleDeleteCoupon(coupon.id)}
                           data-testid={`delete-coupon-${coupon.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Banners Tab */}
+          <TabsContent value="banners">
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="font-medium">{lang === 'ar' ? 'إدارة البانرات' : 'Manage Banners'}</h2>
+                <Dialog open={bannerDialogOpen} onOpenChange={setBannerDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-black text-white hover:bg-gray-800 rounded-full" data-testid="add-banner-btn">
+                      <Plus className="me-2 h-4 w-4" />
+                      {lang === 'ar' ? 'إضافة بانر' : 'Add Banner'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>{lang === 'ar' ? 'إضافة بانر جديد' : 'Add New Banner'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Title (English)</Label>
+                          <Input
+                            value={bannerForm.title_en}
+                            onChange={(e) => setBannerForm({ ...bannerForm, title_en: e.target.value })}
+                            data-testid="banner-title-en"
+                          />
+                        </div>
+                        <div>
+                          <Label>Title (Arabic)</Label>
+                          <Input
+                            value={bannerForm.title_ar}
+                            onChange={(e) => setBannerForm({ ...bannerForm, title_ar: e.target.value })}
+                            data-testid="banner-title-ar"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Subtitle (English)</Label>
+                          <Input
+                            value={bannerForm.subtitle_en}
+                            onChange={(e) => setBannerForm({ ...bannerForm, subtitle_en: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label>Subtitle (Arabic)</Label>
+                          <Input
+                            value={bannerForm.subtitle_ar}
+                            onChange={(e) => setBannerForm({ ...bannerForm, subtitle_ar: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Image URL</Label>
+                        <Input
+                          value={bannerForm.image_url}
+                          onChange={(e) => setBannerForm({ ...bannerForm, image_url: e.target.value })}
+                          placeholder="https://..."
+                          data-testid="banner-image-url"
+                        />
+                      </div>
+                      <div>
+                        <Label>Link URL</Label>
+                        <Input
+                          value={bannerForm.link_url}
+                          onChange={(e) => setBannerForm({ ...bannerForm, link_url: e.target.value })}
+                          placeholder="/products or /products?category=..."
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={bannerForm.is_active}
+                          onCheckedChange={(checked) => setBannerForm({ ...bannerForm, is_active: checked })}
+                        />
+                        <Label>Active</Label>
+                      </div>
+                      <Button onClick={handleCreateBanner} className="bg-black text-white hover:bg-gray-800" data-testid="save-banner-btn">
+                        {t('save')}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              <div className="divide-y divide-gray-200">
+                {banners.length === 0 ? (
+                  <p className="p-8 text-center text-gray-500">{lang === 'ar' ? 'لا توجد بانرات' : 'No banners yet'}</p>
+                ) : (
+                  banners.map((banner) => (
+                    <div key={banner.id} className="p-4 flex items-center gap-4" data-testid={`banner-${banner.id}`}>
+                      <div className="w-32 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                        <img
+                          src={banner.image_url}
+                          alt={banner.title_en}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{lang === 'ar' ? banner.title_ar : banner.title_en}</p>
+                        <p className="text-sm text-gray-500 truncate">
+                          {lang === 'ar' ? banner.subtitle_ar : banner.subtitle_en}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 text-xs rounded-full ${banner.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                          {banner.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500 hover:text-red-600"
+                          onClick={() => handleDeleteBanner(banner.id)}
+                          data-testid={`delete-banner-${banner.id}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

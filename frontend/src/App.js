@@ -12,6 +12,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import OrdersPage from "./pages/OrdersPage";
 import WishlistPage from "./pages/WishlistPage";
+import RewardsPage from "./pages/RewardsPage";
 import CheckoutSuccessPage from "./pages/CheckoutSuccessPage";
 import AdminPage from "./pages/AdminPage";
 
@@ -36,6 +37,7 @@ function App() {
                         <Route path="/products/:id" element={<ProductDetailPage />} />
                         <Route path="/orders" element={<OrdersPage />} />
                         <Route path="/wishlist" element={<WishlistPage />} />
+                        <Route path="/rewards" element={<RewardsPage />} />
                         <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
                         <Route path="/admin" element={<AdminPage />} />
                       </Routes>
