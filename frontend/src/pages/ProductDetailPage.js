@@ -12,6 +12,15 @@ import { Separator } from '../components/ui/separator';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Create axios instance with credentials
+const api = axios.create({
+  baseURL: API,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
 const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -31,7 +40,7 @@ const ProductDetailPage = () => {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const { data } = await axios.get(`${API}/api/products/${id}`);
+        const { data } = await api.get(`/api/products/${id}`);
         setProduct(data);
       } catch (e) {
         console.error('Failed to fetch product:', e);
@@ -66,7 +75,7 @@ const ProductDetailPage = () => {
       // Trigger checkout
       try {
         const originUrl = window.location.origin;
-        const { data } = await axios.post(`${API}/api/checkout`, { origin_url: originUrl });
+        const { data } = await api.post('/api/checkout', { origin_url: originUrl });
         window.location.href = data.url;
       } catch (e) {
         alert(e.response?.data?.detail || 'Checkout failed');
@@ -85,13 +94,13 @@ const ProductDetailPage = () => {
     }
     setSubmittingReview(true);
     try {
-      await axios.post(`${API}/api/reviews`, {
+      await api.post('/api/reviews', {
         product_id: id,
         rating: reviewRating,
         comment: reviewComment
       });
       // Refresh product to get updated reviews
-      const { data } = await axios.get(`${API}/api/products/${id}`);
+      const { data } = await api.get(`/api/products/${id}`);
       setProduct(data);
       setReviewComment('');
       setReviewRating(5);

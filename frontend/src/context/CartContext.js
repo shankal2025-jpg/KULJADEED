@@ -4,6 +4,15 @@ import { useAuth } from './AuthContext';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Create axios instance with credentials
+const api = axios.create({
+  baseURL: API,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
 const CartContext = createContext(null);
 
 export const useCart = () => {
@@ -24,7 +33,7 @@ export const CartProvider = ({ children }) => {
     }
     setLoading(true);
     try {
-      const { data } = await axios.get(`${API}/api/cart`);
+      const { data } = await api.get('/api/cart');
       setCart(data);
     } catch {
       setCart({ items: [], total: 0 });
@@ -39,7 +48,7 @@ export const CartProvider = ({ children }) => {
 
   const addToCart = async (productId, quantity = 1) => {
     try {
-      await axios.post(`${API}/api/cart/add`, { product_id: productId, quantity });
+      await api.post('/api/cart/add', { product_id: productId, quantity });
       await fetchCart();
       return { success: true };
     } catch (e) {
@@ -49,7 +58,7 @@ export const CartProvider = ({ children }) => {
 
   const updateQuantity = async (productId, quantity) => {
     try {
-      await axios.put(`${API}/api/cart/update`, { product_id: productId, quantity });
+      await api.put('/api/cart/update', { product_id: productId, quantity });
       await fetchCart();
       return { success: true };
     } catch (e) {
@@ -59,7 +68,7 @@ export const CartProvider = ({ children }) => {
 
   const removeFromCart = async (productId) => {
     try {
-      await axios.delete(`${API}/api/cart/remove/${productId}`);
+      await api.delete(`/api/cart/remove/${productId}`);
       await fetchCart();
       return { success: true };
     } catch (e) {
@@ -69,7 +78,7 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = async () => {
     try {
-      await axios.delete(`${API}/api/cart/clear`);
+      await api.delete('/api/cart/clear');
       setCart({ items: [], total: 0 });
       return { success: true };
     } catch (e) {

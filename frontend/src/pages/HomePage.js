@@ -9,6 +9,12 @@ import { Skeleton } from '../components/ui/skeleton';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Create axios instance with credentials
+const api = axios.create({
+  baseURL: API,
+  withCredentials: true
+});
+
 const iconMap = {
   Smartphone: Smartphone,
   Shirt: Shirt,
@@ -26,8 +32,8 @@ const HomePage = () => {
     const fetchData = async () => {
       try {
         const [productsRes, categoriesRes] = await Promise.all([
-          axios.get(`${API}/api/products?featured=true&limit=4`),
-          axios.get(`${API}/api/categories`)
+          api.get('/api/products?featured=true&limit=4'),
+          api.get('/api/categories')
         ]);
         setProducts(productsRes.data.products);
         setCategories(categoriesRes.data);

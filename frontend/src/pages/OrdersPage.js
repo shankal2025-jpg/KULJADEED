@@ -8,6 +8,12 @@ import { Skeleton } from '../components/ui/skeleton';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Create axios instance with credentials
+const api = axios.create({
+  baseURL: API,
+  withCredentials: true
+});
+
 const OrdersPage = () => {
   const { user, loading: authLoading } = useAuth();
   const { t } = useLanguage();
@@ -23,7 +29,7 @@ const OrdersPage = () => {
 
     const fetchOrders = async () => {
       try {
-        const { data } = await axios.get(`${API}/api/orders`);
+        const { data } = await api.get('/api/orders');
         setOrders(data);
       } catch (e) {
         console.error('Failed to fetch orders:', e);

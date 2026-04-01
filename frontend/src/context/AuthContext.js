@@ -3,8 +3,14 @@ import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-// Configure axios defaults
-axios.defaults.withCredentials = true;
+// Create axios instance with credentials
+const api = axios.create({
+  baseURL: API,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
 const AuthContext = createContext(null);
 
@@ -28,7 +34,7 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = useCallback(async () => {
     try {
-      const { data } = await axios.get(`${API}/api/auth/me`);
+      const { data } = await api.get('/api/auth/me');
       setUser(data);
     } catch {
       setUser(null);
@@ -43,7 +49,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const { data } = await axios.post(`${API}/api/auth/login`, { email, password });
+      const { data } = await api.post('/api/auth/login', { email, password });
       setUser(data);
       return { success: true };
     } catch (e) {
@@ -53,7 +59,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (email, password, name) => {
     try {
-      const { data } = await axios.post(`${API}/api/auth/register`, { email, password, name });
+      const { data } = await api.post('/api/auth/register', { email, password, name });
       setUser(data);
       return { success: true };
     } catch (e) {
@@ -63,7 +69,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await axios.post(`${API}/api/auth/logout`);
+      await api.post('/api/auth/logout');
     } finally {
       setUser(null);
     }
@@ -71,7 +77,7 @@ export const AuthProvider = ({ children }) => {
 
   const refreshToken = async () => {
     try {
-      await axios.post(`${API}/api/auth/refresh`);
+      await api.post('/api/auth/refresh');
       return true;
     } catch {
       setUser(null);

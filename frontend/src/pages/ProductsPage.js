@@ -12,6 +12,12 @@ import { Skeleton } from '../components/ui/skeleton';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Create axios instance with credentials
+const api = axios.create({
+  baseURL: API,
+  withCredentials: true
+});
+
 const ProductsPage = () => {
   const { t, getLocalizedName, lang } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -28,7 +34,7 @@ const ProductsPage = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const { data } = await axios.get(`${API}/api/categories`);
+        const { data } = await api.get('/api/categories');
         setCategories(data);
       } catch (e) {
         console.error('Failed to fetch categories:', e);
@@ -48,7 +54,7 @@ const ProductsPage = () => {
         params.set('page', page.toString());
         params.set('limit', '12');
 
-        const { data } = await axios.get(`${API}/api/products?${params.toString()}`);
+        const { data } = await api.get(`/api/products?${params.toString()}`);
         setProducts(data.products);
         setTotalPages(data.pages);
       } catch (e) {

@@ -12,6 +12,15 @@ import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Create axios instance with credentials
+const api = axios.create({
+  baseURL: API,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
 const CartSheet = ({ children }) => {
   const { user } = useAuth();
   const { cart, updateQuantity, removeFromCart, loading } = useCart();
@@ -30,7 +39,7 @@ const CartSheet = ({ children }) => {
     setCheckoutLoading(true);
     try {
       const originUrl = window.location.origin;
-      const { data } = await axios.post(`${API}/api/checkout`, { origin_url: originUrl });
+      const { data } = await api.post('/api/checkout', { origin_url: originUrl });
       window.location.href = data.url;
     } catch (e) {
       console.error('Checkout error:', e);

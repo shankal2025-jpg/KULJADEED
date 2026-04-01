@@ -16,6 +16,15 @@ import { Skeleton } from '../components/ui/skeleton';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Create axios instance with credentials
+const api = axios.create({
+  baseURL: API,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
 const AdminPage = () => {
   const { user, loading: authLoading } = useAuth();
   const { t, getLocalizedName } = useLanguage();
@@ -44,10 +53,10 @@ const AdminPage = () => {
     const fetchData = async () => {
       try {
         const [statsRes, productsRes, categoriesRes, ordersRes] = await Promise.all([
-          axios.get(`${API}/api/admin/stats`),
-          axios.get(`${API}/api/products?limit=100`),
-          axios.get(`${API}/api/categories`),
-          axios.get(`${API}/api/admin/orders`)
+          api.get('/api/admin/stats'),
+          api.get('/api/products?limit=100'),
+          api.get('/api/categories'),
+          api.get('/api/admin/orders')
         ]);
         setStats(statsRes.data);
         setProducts(productsRes.data.products);
@@ -98,13 +107,13 @@ const AdminPage = () => {
       };
 
       if (editingProduct) {
-        await axios.put(`${API}/api/admin/products/${editingProduct.id}`, data);
+        await api.put(`/api/admin/products/${editingProduct.id}`, data);
       } else {
-        await axios.post(`${API}/api/admin/products`, data);
+        await api.post('/api/admin/products', data);
       }
 
       // Refresh products
-      const { data: productsData } = await axios.get(`${API}/api/products?limit=100`);
+      const { data: productsData } = await api.get('/api/products?limit=100');
       setProducts(productsData.products);
       setProductDialogOpen(false);
       resetProductForm();
@@ -116,7 +125,7 @@ const AdminPage = () => {
   const handleDeleteProduct = async (productId) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
     try {
-      await axios.delete(`${API}/api/admin/products/${productId}`);
+      await api.delete(`/api/admin/products/${productId}`);
       setProducts(products.filter(p => p.id !== productId));
     } catch (e) {
       alert(e.response?.data?.detail || 'Failed to delete product');
@@ -125,7 +134,7 @@ const AdminPage = () => {
 
   const handleUpdateOrderStatus = async (orderId, status) => {
     try {
-      await axios.put(`${API}/api/admin/orders/${orderId}/status?status=${status}`);
+      await api.put(`/api/admin/orders/${orderId}/status?status=${status}`);
       setOrders(orders.map(o => o.id === orderId ? { ...o, status } : o));
     } catch (e) {
       alert(e.response?.data?.detail || 'Failed to update order');

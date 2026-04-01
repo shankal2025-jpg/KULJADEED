@@ -8,6 +8,12 @@ import { Button } from '../components/ui/button';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Create axios instance with credentials
+const api = axios.create({
+  baseURL: API,
+  withCredentials: true
+});
+
 const CheckoutSuccessPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -25,7 +31,7 @@ const CheckoutSuccessPage = () => {
 
     const checkStatus = async () => {
       try {
-        const { data } = await axios.get(`${API}/api/checkout/status/${sessionId}`);
+        const { data } = await api.get(`/api/checkout/status/${sessionId}`);
         
         if (data.payment_status === 'paid') {
           setStatus('success');
