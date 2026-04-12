@@ -19,6 +19,7 @@ const translations = {
     logout: 'Logout',
     admin: 'Admin',
     myOrders: 'My Orders',
+    currency: 'YR',
     
     // Home
     heroTitle: 'Discover Premium Products',
@@ -112,6 +113,7 @@ const translations = {
     logout: 'تسجيل الخروج',
     admin: 'الإدارة',
     myOrders: 'طلباتي',
+    currency: 'ريال',
     
     // Home
     heroTitle: 'اكتشف المنتجات الفاخرة',
@@ -225,8 +227,12 @@ export const LanguageProvider = ({ children }) => {
     return lang === 'ar' ? (item.description_ar || item.description_en) : (item.description_en || item.description_ar);
   };
 
+  const formatPrice = (price) => {
+    return lang === 'ar' ? `${price.toFixed(2)} ريال` : `${price.toFixed(2)} YR`;
+  };
+
   return (
-    <LanguageContext.Provider value={{ lang, dir, t, toggleLanguage, getLocalizedName, getLocalizedDescription }}>
+    <LanguageContext.Provider value={{ lang, dir, t, toggleLanguage, getLocalizedName, getLocalizedDescription, formatPrice }}>
       {children}
     </LanguageContext.Provider>
   );

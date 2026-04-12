@@ -900,7 +900,7 @@ async def create_checkout(data: CheckoutWithCoupon, request: Request, user: dict
     
     checkout_request = CheckoutSessionRequest(
         amount=float(total),
-        currency="usd",
+        currency="yer",
         success_url=success_url,
         cancel_url=cancel_url,
         metadata={"user_id": user["id"], "user_email": user["email"], "coupon_code": coupon_code or ""}
@@ -961,7 +961,7 @@ async def get_checkout_status(session_id: str, user: dict = Depends(get_current_
                     "discount": transaction.get("discount", 0),
                     "coupon_code": transaction.get("coupon_code"),
                     "total": transaction["amount"],
-                    "currency": "usd",
+                    "currency": "yer",
                     "status": "confirmed",
                     "payment_status": "paid",
                     "tracking_number": None,
@@ -1023,7 +1023,7 @@ async def stripe_webhook(request: Request):
                         "user_email": transaction["user_email"],
                         "items": transaction["items"],
                         "total": transaction["amount"],
-                        "currency": "usd",
+                        "currency": "yer",
                         "status": "confirmed",
                         "payment_status": "paid",
                         "created_at": datetime.now(timezone.utc)

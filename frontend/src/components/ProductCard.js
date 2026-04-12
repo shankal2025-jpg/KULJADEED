@@ -4,7 +4,7 @@ import { Star } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 const ProductCard = ({ product }) => {
-  const { getLocalizedName } = useLanguage();
+  const { getLocalizedName, formatPrice } = useLanguage();
 
   return (
     <Link
@@ -28,7 +28,7 @@ const ProductCard = ({ product }) => {
       <div className="p-4">
         <h3 className="font-medium text-start line-clamp-1">{getLocalizedName(product)}</h3>
         <div className="flex items-center justify-between mt-2">
-          <span className="text-lg font-bold">${product.price.toFixed(2)}</span>
+          <span className="text-lg font-bold">{formatPrice(product.price)}</span>
           {product.avg_rating > 0 && (
             <div className="flex items-center gap-1 text-sm text-gray-600">
               <Star className="h-4 w-4 fill-yellow-400 stroke-yellow-400" />
