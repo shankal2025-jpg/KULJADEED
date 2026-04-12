@@ -1,76 +1,65 @@
-# كل جديد KULJADEED - E-Commerce Store (Complete)
+# KULJADEED E-Commerce Store - Product Requirements Document
 
-## Problem Statement
-Bilingual e-commerce store with all premium features including:
-- Multi-category products with variants
-- Stripe payment integration
-- User authentication with rewards
-- Admin dashboard
-- Shopping cart with coupon codes
+## Original Problem Statement
+Build a bilingual (Arabic/English) e-commerce store named "كل جديد KULJADEED" with Stripe payment integration, multiple diverse products, and full admin management.
+
+## Core Features (All Implemented)
+- Bilingual UI (Arabic/English) with RTL/LTR support
+- JWT Authentication with admin/customer roles
+- Product Catalog with categories, search, filtering, sorting
+- Shopping Cart with quantity management
+- Stripe Checkout integration (uses USD internally, displays YR on frontend)
 - Wishlist functionality
-- Order tracking
-- Promotional banners carousel
-- Reward points system
-- Email notifications
+- Reward Points system (earn/redeem)
+- Discount Coupons system
+- Promotional Banners carousel
+- Order Tracking with tracking numbers/URLs
+- Admin Dashboard (Products, Orders, Coupons, Banners, Categories CRUD, Stats)
+- Email notifications via Resend (requires API key setup)
+
+## Currency
+- Display: YR (Yemeni Rial) / ريال
+- Stripe: Processes in USD internally
+
+## Tech Stack
+- Frontend: React + TailwindCSS + Shadcn UI
+- Backend: FastAPI + MongoDB (Motor)
+- Payments: Stripe (via emergentintegrations)
+- Email: Resend (pending API key)
 
 ## Architecture
-### Backend (FastAPI + MongoDB + Resend)
-- Authentication: JWT with 24-hour sessions
-- Collections: users, products, categories, carts, orders, reviews, wishlists, coupons, banners, reward_history, payment_transactions
-- Email: Resend integration (requires API key)
+```
+/app/
+├── backend/
+│   ├── server.py          # All routes and models
+│   ├── requirements.txt
+│   └── .env
+├── frontend/
+│   ├── src/
+│   │   ├── context/       # AuthContext, CartContext, LanguageContext
+│   │   ├── pages/         # All page components
+│   │   ├── components/    # Header, ProductCard, CartSheet, ui/
+│   │   ├── App.js
+│   │   └── index.css
+│   ├── package.json
+│   └── .env
+└── memory/
+    └── PRD.md
+```
 
-### Frontend (React + Tailwind CSS)
-- Pages: Home, Products, ProductDetail, Login, Register, Orders, Wishlist, Rewards, Admin, CheckoutSuccess
-- Features: RTL support, banner carousel, reward points, coupon system
+## Admin Credentials
+- Email: admin@store.com
+- Password: Admin123!
 
-## Implemented Features
-### Core E-commerce
-- [x] Product catalog with 4 categories, 6 products
-- [x] Shopping cart with quantity management
-- [x] Stripe checkout integration
-- [x] Order management with tracking
-- [x] Product reviews and ratings
-- [x] Search and filter products
-- [x] Bilingual (EN/AR) with RTL
+## Completed Tasks
+- [x] Full e-commerce MVP
+- [x] Bilingual support (EN/AR with RTL)
+- [x] Stripe checkout
+- [x] Wishlist, Rewards, Coupons, Banners
+- [x] Admin Dashboard with full CRUD
+- [x] Currency change to YR (Yemeni Rial)
+- [x] Categories management in admin panel (Feb 2026)
 
-### User Features
-- [x] Registration and login
-- [x] Wishlist functionality
-- [x] Reward points (1 point = $0.01)
-- [x] Point redemption for discount coupons
-- [x] Order history with tracking info
-
-### Admin Features
-- [x] Dashboard with stats
-- [x] Product CRUD
-- [x] Order management with tracking
-- [x] Coupon management
-- [x] Banner management
-
-### Marketing Features
-- [x] Promotional banners carousel (auto-rotate)
-- [x] Coupon codes (WELCOME10, SAVE20, FLAT50)
-- [x] Reward points program
-- [x] Email notifications (ready for Resend API)
-
-## Test Credentials
-- Admin: admin@store.com / Admin123!
-- Coupons: WELCOME10 (10%), SAVE20 (20%), FLAT50 ($50)
-
-## API Endpoints Summary
-- Auth: /api/auth/* (register, login, logout, me, refresh, forgot-password, reset-password)
-- Products: /api/products/* (list, detail, admin CRUD)
-- Cart: /api/cart/* (get, add, update, remove, clear)
-- Wishlist: /api/wishlist/* (get, add, remove)
-- Orders: /api/orders/* (list, detail, admin list, update status)
-- Coupons: /api/coupons/* (validate, admin CRUD)
-- Banners: /api/banners (public), /api/admin/banners (CRUD)
-- Rewards: /api/rewards (balance & history), /api/rewards/redeem
-- Checkout: /api/checkout, /api/checkout/status/{id}
-
-## Next Tasks (Phase 3)
-1. Multiple product images gallery
-2. Product variants (size, color)
-3. Social login (Google, Apple)
-4. Product comparison
-5. Push notifications
+## Pending / Backlog
+- [ ] Resend Email API key setup (user needs to provide key)
+- [ ] Backend refactoring (split server.py into separate route files)
