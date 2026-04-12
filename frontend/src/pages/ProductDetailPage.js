@@ -26,7 +26,7 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addToCart } = useCart();
-  const { t, lang, getLocalizedName, getLocalizedDescription } = useLanguage();
+  const { t, lang, getLocalizedName, getLocalizedDescription, formatPrice } = useLanguage();
   
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -199,7 +199,7 @@ const ProductDetailPage = () => {
             </h1>
             
             <div className="flex items-center gap-4 mt-4">
-              <span className="text-3xl font-bold">${product.price.toFixed(2)}</span>
+              <span className="text-3xl font-bold">{formatPrice(product.price)}</span>
               {product.avg_rating > 0 && (
                 <div className="flex items-center gap-1 text-sm">
                   <Star className="h-5 w-5 fill-yellow-400 stroke-yellow-400" />

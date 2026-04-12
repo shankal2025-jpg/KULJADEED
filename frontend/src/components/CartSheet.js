@@ -25,7 +25,7 @@ const api = axios.create({
 const CartSheet = ({ children }) => {
   const { user } = useAuth();
   const { cart, updateQuantity, removeFromCart, loading } = useCart();
-  const { t, lang, getLocalizedName } = useLanguage();
+  const { t, lang, getLocalizedName, formatPrice } = useLanguage();
   const navigate = useNavigate();
   const [open, setOpen] = React.useState(false);
   const [checkoutLoading, setCheckoutLoading] = React.useState(false);
@@ -129,7 +129,7 @@ const CartSheet = ({ children }) => {
                       <h4 className="font-medium text-sm line-clamp-1 text-start">
                         {getLocalizedName(item.product)}
                       </h4>
-                      <p className="text-sm text-gray-500 mt-0.5">${item.product.price.toFixed(2)}</p>
+                      <p className="text-sm text-gray-500 mt-0.5">{formatPrice(item.product.price)}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <Button
                           variant="outline"
@@ -178,7 +178,7 @@ const CartSheet = ({ children }) => {
                       <Tag className="h-4 w-4 text-green-600" />
                       <span className="text-sm font-medium text-green-700">{couponApplied.code}</span>
                       <span className="text-xs text-green-600">
-                        ({couponApplied.discount_type === 'percentage' ? `${couponApplied.discount_value}%` : `$${couponApplied.discount_value}`} off)
+                        ({couponApplied.discount_type === 'percentage' ? `${couponApplied.discount_value}%` : `${formatPrice(couponApplied.discount_value)}`} off)
                       </span>
                     </div>
                     <Button variant="ghost" size="sm" onClick={removeCoupon} className="text-red-500 h-6 px-2">
@@ -211,18 +211,18 @@ const CartSheet = ({ children }) => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">{t('subtotal')}</span>
-                  <span>${cart.total.toFixed(2)}</span>
+                  <span>{formatPrice(cart.total)}</span>
                 </div>
                 {discount > 0 && (
                   <div className="flex items-center justify-between text-sm text-green-600">
                     <span>{lang === 'ar' ? 'الخصم' : 'Discount'}</span>
-                    <span>-${discount.toFixed(2)}</span>
+                    <span>-{formatPrice(discount)}</span>
                   </div>
                 )}
                 <Separator />
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{lang === 'ar' ? 'المجموع' : 'Total'}</span>
-                  <span className="text-xl font-bold">${finalTotal.toFixed(2)}</span>
+                  <span className="text-xl font-bold">{formatPrice(finalTotal)}</span>
                 </div>
               </div>
 

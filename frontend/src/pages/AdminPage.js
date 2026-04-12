@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, ShoppingCart, Users, DollarSign, Plus, Pencil, Trash2, ArrowLeft, Tag, Truck, Image } from 'lucide-react';
+import { Package, ShoppingCart, Users, DollarSign, Plus, Pencil, Trash2, ArrowLeft, Tag, Truck, Image, Layers } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -27,7 +27,7 @@ const api = axios.create({
 
 const AdminPage = () => {
   const { user, loading: authLoading } = useAuth();
-  const { t, lang, getLocalizedName } = useLanguage();
+  const { t, lang, getLocalizedName, formatPrice } = useLanguage();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState(null);
@@ -43,6 +43,13 @@ const AdminPage = () => {
   const [bannerDialogOpen, setBannerDialogOpen] = useState(false);
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+
+  // Category form state
+  const [categoryForm, setCategoryForm] = useState({
+    name_en: '', name_ar: '', icon: 'Package'
+  });
 
   // Product form state
   const [productForm, setProductForm] = useState({
@@ -242,6 +249,27 @@ const AdminPage = () => {
     }
   };
 
+  const handleCreateCategory = async () => {
+    try {
+      const { data: newCat } = await api.post('/api/admin/categories', categoryForm);
+      setCategories([...categories, { ...categoryForm, id: newCat.id }]);
+      setCategoryDialogOpen(false);
+      setCategoryForm({ name_en: '', name_ar: '', icon: 'Package' });
+    } catch (e) {
+      alert(e.response?.data?.detail || 'Failed to create category');
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId) => {
+    if (!confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذه الفئة؟' : 'Are you sure you want to delete this category?')) return;
+    try {
+      await api.delete(`/api/admin/categories/${categoryId}`);
+      setCategories(categories.filter(c => c.id !== categoryId));
+    } catch (e) {
+      alert(e.response?.data?.detail || 'Failed to delete category');
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-[#F8F9FA]">
@@ -280,7 +308,7 @@ const AdminPage = () => {
               </div>
               <span className="text-sm text-gray-500">{t('totalRevenue')}</span>
             </div>
-            <p className="text-2xl font-bold">${stats?.total_revenue?.toFixed(2) || '0.00'}</p>
+            <p className="text-2xl font-bold">{formatPrice(stats?.total_revenue || 0)}</p>
           </div>
           
           <div className="bg-white border border-gray-200 rounded-xl p-6" data-testid="stat-orders">
@@ -321,6 +349,7 @@ const AdminPage = () => {
             <TabsTrigger value="orders" data-testid="tab-orders">{t('manageOrders')}</TabsTrigger>
             <TabsTrigger value="coupons" data-testid="tab-coupons">{lang === 'ar' ? 'الكوبونات' : 'Coupons'}</TabsTrigger>
             <TabsTrigger value="banners" data-testid="tab-banners">{lang === 'ar' ? 'البانرات' : 'Banners'}</TabsTrigger>
+            <TabsTrigger value="categories" data-testid="tab-categories">{lang === 'ar' ? 'الفئات' : 'Categories'}</TabsTrigger>
           </TabsList>
 
           {/* Products Tab */}
@@ -378,7 +407,7 @@ const AdminPage = () => {
                       </div>
                       <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <Label>Price ($)</Label>
+                          <Label>{lang === 'ar' ? 'السعر (ريال)' : 'Price (YR)'}</Label>
                           <Input
                             type="number"
                             step="0.01"
@@ -444,7 +473,7 @@ const AdminPage = () => {
                     />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium truncate text-start">{getLocalizedName(product)}</h3>
-                      <p className="text-sm text-gray-500">${product.price.toFixed(2)} • Stock: {product.stock}</p>
+                      <p className="text-sm text-gray-500">{formatPrice(product.price)} • Stock: {product.stock}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
@@ -489,7 +518,7 @@ const AdminPage = () => {
                           <span className="font-medium">{t('orderNumber')}{order.id.slice(-8).toUpperCase()}</span>
                           <span className="text-sm text-gray-500 ms-2">{order.user_email}</span>
                         </div>
-                        <span className="font-bold">${order.total.toFixed(2)}</span>
+                        <span className="font-bold">{formatPrice(order.total)}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-gray-500">
@@ -579,7 +608,7 @@ const AdminPage = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label>{lang === 'ar' ? 'الحد الأدنى للطلب ($)' : 'Min Order ($)'}</Label>
+                          <Label>{lang === 'ar' ? 'الحد الأدنى للطلب (ريال)' : 'Min Order (YR)'}</Label>
                           <Input
                             type="number"
                             value={couponForm.min_order}
@@ -618,8 +647,8 @@ const AdminPage = () => {
                         <div>
                           <p className="font-medium">{coupon.code}</p>
                           <p className="text-sm text-gray-500">
-                            {coupon.discount_type === 'percentage' ? `${coupon.discount_value}%` : `$${coupon.discount_value}`} off
-                            {coupon.min_order > 0 && ` • Min $${coupon.min_order}`}
+                            {coupon.discount_type === 'percentage' ? `${coupon.discount_value}%` : `${coupon.discount_value} YR`} off
+                            {coupon.min_order > 0 && ` • Min ${coupon.min_order} YR`}
                           </p>
                         </div>
                       </div>
@@ -760,6 +789,97 @@ const AdminPage = () => {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Categories Tab */}
+          <TabsContent value="categories">
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="font-medium">{lang === 'ar' ? 'إدارة الفئات' : 'Manage Categories'}</h2>
+                <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-black text-white hover:bg-gray-800 rounded-full" data-testid="add-category-btn">
+                      <Plus className="me-2 h-4 w-4" />
+                      {lang === 'ar' ? 'إضافة فئة' : 'Add Category'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{lang === 'ar' ? 'إضافة فئة جديدة' : 'Add New Category'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>{lang === 'ar' ? 'الاسم (إنجليزي)' : 'Name (English)'}</Label>
+                          <Input
+                            value={categoryForm.name_en}
+                            onChange={(e) => setCategoryForm({ ...categoryForm, name_en: e.target.value })}
+                            placeholder="e.g., Electronics"
+                            data-testid="category-name-en"
+                          />
+                        </div>
+                        <div>
+                          <Label>{lang === 'ar' ? 'الاسم (عربي)' : 'Name (Arabic)'}</Label>
+                          <Input
+                            value={categoryForm.name_ar}
+                            onChange={(e) => setCategoryForm({ ...categoryForm, name_ar: e.target.value })}
+                            placeholder="مثال: إلكترونيات"
+                            data-testid="category-name-ar"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>{lang === 'ar' ? 'الأيقونة' : 'Icon'}</Label>
+                        <Select value={categoryForm.icon} onValueChange={(v) => setCategoryForm({ ...categoryForm, icon: v })}>
+                          <SelectTrigger data-testid="category-icon-select">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Smartphone">{lang === 'ar' ? 'هاتف' : 'Smartphone'}</SelectItem>
+                            <SelectItem value="Shirt">{lang === 'ar' ? 'ملابس' : 'Shirt'}</SelectItem>
+                            <SelectItem value="Sparkles">{lang === 'ar' ? 'جمال' : 'Sparkles'}</SelectItem>
+                            <SelectItem value="Home">{lang === 'ar' ? 'منزل' : 'Home'}</SelectItem>
+                            <SelectItem value="Package">{lang === 'ar' ? 'عام' : 'Package'}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button onClick={handleCreateCategory} className="bg-black text-white hover:bg-gray-800" data-testid="save-category-btn">
+                        {t('save')}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              <div className="divide-y divide-gray-200">
+                {categories.length === 0 ? (
+                  <p className="p-8 text-center text-gray-500">{lang === 'ar' ? 'لا توجد فئات' : 'No categories yet'}</p>
+                ) : (
+                  categories.map((category) => (
+                    <div key={category.id} className="p-4 flex items-center justify-between" data-testid={`admin-category-${category.id}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                          <Layers className="h-5 w-5 text-gray-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{getLocalizedName(category)}</p>
+                          <p className="text-sm text-gray-500">{category.name_en} / {category.name_ar}</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-500 hover:text-red-600"
+                        onClick={() => handleDeleteCategory(category.id)}
+                        data-testid={`delete-category-${category.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))
                 )}

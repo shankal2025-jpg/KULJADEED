@@ -201,13 +201,13 @@ async def send_order_email(to_email: str, order_id: str, items: list, total: flo
     items_html = "".join([
         f"<tr><td style='padding:8px;border-bottom:1px solid #eee;'>{item['name']}</td>"
         f"<td style='padding:8px;border-bottom:1px solid #eee;text-align:center;'>{item['quantity']}</td>"
-        f"<td style='padding:8px;border-bottom:1px solid #eee;text-align:right;'>${item['price']:.2f}</td></tr>"
+        f"<td style='padding:8px;border-bottom:1px solid #eee;text-align:right;'>{item['price']:.2f} YR</td></tr>"
         for item in items
     ])
     
     discount_html = ""
     if discount > 0:
-        discount_html = f"<tr><td colspan='2' style='padding:8px;text-align:right;color:#16a34a;'>Discount:</td><td style='padding:8px;text-align:right;color:#16a34a;'>-${discount:.2f}</td></tr>"
+        discount_html = f"<tr><td colspan='2' style='padding:8px;text-align:right;color:#16a34a;'>Discount:</td><td style='padding:8px;text-align:right;color:#16a34a;'>-{discount:.2f} YR</td></tr>"
     
     html_content = f"""
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
@@ -231,7 +231,7 @@ async def send_order_email(to_email: str, order_id: str, items: list, total: flo
                     {discount_html}
                     <tr style="font-weight:bold;">
                         <td colspan="2" style="padding:12px;text-align:right;">Total:</td>
-                        <td style="padding:12px;text-align:right;">${total:.2f}</td>
+                        <td style="padding:12px;text-align:right;">{total:.2f} YR</td>
                     </tr>
                 </tbody>
             </table>
@@ -790,7 +790,7 @@ async def get_user_rewards(user: dict = Depends(get_current_user)):
     
     return {
         "points": points,
-        "points_value": points * 0.01,  # 100 points = $1
+        "points_value": points * 0.01,  # 100 points = 1 YR
         "history": [serialize_doc(h) for h in history]
     }
 
@@ -806,7 +806,7 @@ async def redeem_rewards(data: RewardPointsRedeem, user: dict = Depends(get_curr
         raise HTTPException(status_code=400, detail="Minimum 100 points required")
     
     # Create a discount coupon
-    discount_value = data.points * 0.01  # 100 points = $1
+    discount_value = data.points * 0.01  # 100 points = 1 YR
     coupon_code = f"REWARD{secrets.token_hex(4).upper()}"
     
     await db.coupons.insert_one({
@@ -831,7 +831,7 @@ async def redeem_rewards(data: RewardPointsRedeem, user: dict = Depends(get_curr
     await db.reward_history.insert_one({
         "user_id": user["id"],
         "points": -data.points,
-        "description": f"Redeemed for ${discount_value:.2f} discount coupon",
+        "description": f"Redeemed for {discount_value:.2f} YR discount coupon",
         "coupon_code": coupon_code,
         "created_at": datetime.now(timezone.utc)
     })
@@ -839,7 +839,7 @@ async def redeem_rewards(data: RewardPointsRedeem, user: dict = Depends(get_curr
     return {
         "coupon_code": coupon_code,
         "discount_value": discount_value,
-        "message": f"Redeemed {data.points} points for ${discount_value:.2f} discount"
+        "message": f"Redeemed {data.points} points for {discount_value:.2f} YR discount"
     }
 
 # ===================== PAYMENT ROUTES =====================
@@ -878,7 +878,7 @@ async def create_checkout(data: CheckoutWithCoupon, request: Request, user: dict
             if coupon.get("used_count", 0) >= coupon.get("max_uses", 100):
                 raise HTTPException(status_code=400, detail="Coupon usage limit reached")
             if subtotal < coupon.get("min_order", 0):
-                raise HTTPException(status_code=400, detail=f"Minimum order ${coupon['min_order']} required for this coupon")
+                raise HTTPException(status_code=400, detail=f"Minimum order {coupon['min_order']} YR required for this coupon")
             
             coupon_code = coupon["code"]
             if coupon["discount_type"] == "percentage":
@@ -900,7 +900,7 @@ async def create_checkout(data: CheckoutWithCoupon, request: Request, user: dict
     
     checkout_request = CheckoutSessionRequest(
         amount=float(total),
-        currency="yer",
+        currency="usd",
         success_url=success_url,
         cancel_url=cancel_url,
         metadata={"user_id": user["id"], "user_email": user["email"], "coupon_code": coupon_code or ""}

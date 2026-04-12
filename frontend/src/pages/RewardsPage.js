@@ -18,7 +18,7 @@ const api = axios.create({
 
 const RewardsPage = () => {
   const { user, loading: authLoading } = useAuth();
-  const { lang } = useLanguage();
+  const { lang, formatPrice } = useLanguage();
   const navigate = useNavigate();
   const [rewards, setRewards] = useState({ points: 0, points_value: 0, history: [] });
   const [loading, setLoading] = useState(true);
@@ -105,11 +105,11 @@ const RewardsPage = () => {
           <div className="flex items-center gap-2 text-white/80">
             <TrendingUp className="h-4 w-4" />
             <span className="text-sm">
-              {lang === 'ar' ? `قيمة: $${rewards.points_value.toFixed(2)}` : `Worth: $${rewards.points_value.toFixed(2)}`}
+              {lang === 'ar' ? `قيمة: ${rewards.points_value.toFixed(2)} ريال` : `Worth: ${rewards.points_value.toFixed(2)} YR`}
             </span>
           </div>
           <p className="mt-4 text-sm text-white/70">
-            {lang === 'ar' ? 'اكسب نقطة واحدة لكل دولار تنفقه' : 'Earn 1 point for every $1 you spend'}
+            {lang === 'ar' ? 'اكسب نقطة واحدة لكل ريال تنفقه' : 'Earn 1 point for every 1 YR you spend'}
           </p>
         </div>
 
@@ -155,7 +155,7 @@ const RewardsPage = () => {
                   <span className="text-sm text-gray-500">
                     {lang === 'ar' ? 'النقاط للاستبدال' : 'Points to redeem'}
                   </span>
-                  <span className="font-bold">{redeemPoints} = ${(redeemPoints * 0.01).toFixed(2)}</span>
+                  <span className="font-bold">{redeemPoints} = {(redeemPoints * 0.01).toFixed(2)} YR</span>
                 </div>
                 <Slider
                   value={[redeemPoints]}
@@ -179,7 +179,7 @@ const RewardsPage = () => {
               >
                 {redeeming ? (lang === 'ar' ? 'جاري الاستبدال...' : 'Redeeming...') : (
                   <>
-                    {lang === 'ar' ? `استبدال ${redeemPoints} نقطة مقابل $${(redeemPoints * 0.01).toFixed(2)}` : `Redeem ${redeemPoints} points for $${(redeemPoints * 0.01).toFixed(2)}`}
+                    {lang === 'ar' ? `استبدال ${redeemPoints} نقطة مقابل ${(redeemPoints * 0.01).toFixed(2)} ريال` : `Redeem ${redeemPoints} points for ${(redeemPoints * 0.01).toFixed(2)} YR`}
                     <ArrowRight className="ms-2 h-4 w-4" />
                   </>
                 )}

@@ -17,7 +17,7 @@ const api = axios.create({
 
 const OrdersPage = () => {
   const { user, loading: authLoading } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang, formatPrice } = useLanguage();
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -92,7 +92,7 @@ const OrdersPage = () => {
                     }`}>
                       {order.status}
                     </span>
-                    <span className="font-bold">${order.total.toFixed(2)}</span>
+                    <span className="font-bold">{formatPrice(order.total)}</span>
                   </div>
                 </div>
                 
@@ -100,7 +100,7 @@ const OrdersPage = () => {
                   {order.items.map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between text-sm">
                       <span>{item.name} x{item.quantity}</span>
-                      <span className="text-gray-500">${(item.price * item.quantity).toFixed(2)}</span>
+                      <span className="text-gray-500">{formatPrice(item.price * item.quantity)}</span>
                     </div>
                   ))}
                 </div>
@@ -110,7 +110,7 @@ const OrdersPage = () => {
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">{lang === 'ar' ? 'الخصم' : 'Discount'} ({order.coupon_code})</span>
-                      <span className="text-green-600">-${order.discount.toFixed(2)}</span>
+                      <span className="text-green-600">-{formatPrice(order.discount)}</span>
                     </div>
                   </div>
                 )}
