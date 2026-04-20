@@ -27,9 +27,7 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2" data-testid="logo-link">
-            <div className="w-8 h-8 bg-gradient-to-br from-rose-500 to-orange-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">ك</span>
-            </div>
+            <img src="https://customer-assets.emergentagent.com/job_digital-marketplace-236/artifacts/44kcrdx5_WhatsApp%20Image%202026-04-20%20at%2012.04.01%20PM.jpeg" alt="KULJADEED" className="w-9 h-9 object-contain" />
             <span className="font-display text-xl font-bold tracking-tight">
               {lang === 'ar' ? 'كل جديد' : 'KULJADEED'}
             </span>
