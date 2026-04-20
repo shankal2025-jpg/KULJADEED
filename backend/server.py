@@ -48,9 +48,6 @@ api_router = APIRouter(prefix="/api")
 UPLOAD_DIR = Path("/app/backend/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-# Serve uploaded files
-app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
-
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -569,7 +566,7 @@ async def upload_video(file: UploadFile = File(...), user: dict = Depends(get_ad
                 raise HTTPException(status_code=400, detail="File too large. Maximum 100MB allowed")
             f.write(chunk)
     
-    video_url = f"/uploads/{filename}"
+    video_url = f"/api/uploads/{filename}"
     logger.info(f"Video uploaded: {filename} ({total_size / 1024 / 1024:.1f}MB)")
     
     return {"video_url": video_url, "filename": filename, "size": total_size}
@@ -600,7 +597,7 @@ async def upload_image(file: UploadFile = File(...), user: dict = Depends(get_ad
                 raise HTTPException(status_code=400, detail="File too large. Maximum 10MB allowed")
             f.write(chunk)
     
-    image_url = f"/uploads/{filename}"
+    image_url = f"/api/uploads/{filename}"
     return {"image_url": image_url, "filename": filename, "size": total_size}
 
 # ===================== CART ROUTES =====================
@@ -1247,6 +1244,24 @@ async def shutdown_db_client():
     client.close()
 
 app.include_router(api_router)
+
+# Serve uploaded files via /api/uploads/ path
+from starlette.responses import FileResponse
+
+@app.get("/api/uploads/{filename}")
+async def serve_upload(filename: str):
+    file_path = UPLOAD_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    # Determine content type
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    content_types = {
+        "mp4": "video/mp4", "webm": "video/webm", "mov": "video/quicktime",
+        "avi": "video/x-msvideo", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+        "png": "image/png", "webp": "image/webp", "gif": "image/gif"
+    }
+    content_type = content_types.get(ext, "application/octet-stream")
+    return FileResponse(str(file_path), media_type=content_type)
 
 @api_router.get("/health")
 async def health():
