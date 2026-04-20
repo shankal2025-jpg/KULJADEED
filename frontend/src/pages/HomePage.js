@@ -259,7 +259,7 @@ const HomePage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <img src="https://customer-assets.emergentagent.com/job_digital-marketplace-236/artifacts/44kcrdx5_WhatsApp%20Image%202026-04-20%20at%2012.04.01%20PM.jpeg" alt="KULJADEED" className="w-9 h-9 object-contain" />
+              <img src="https://customer-assets.emergentagent.com/job_digital-marketplace-236/artifacts/44kcrdx5_WhatsApp%20Image%202026-04-20%20at%2012.04.01%20PM.jpeg" alt="KULJADEED" className="w-20 h-20 object-contain" />
               <span className="font-display text-xl font-bold">{lang === 'ar' ? 'كل جديد' : 'KULJADEED'}</span>
             </div>
             <p className="text-gray-400 text-sm">© 2024 {lang === 'ar' ? 'كل جديد' : 'KULJADEED'}. {lang === 'ar' ? 'جميع الحقوق محفوظة' : 'All rights reserved'}.</p>
