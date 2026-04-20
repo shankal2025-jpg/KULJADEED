@@ -1,9 +1,10 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, UploadFile, File
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import Response
+from fastapi.staticfiles import StaticFiles
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 import os
@@ -13,6 +14,9 @@ import jwt
 import secrets
 import asyncio
 import resend
+import uuid
+import shutil
+from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict
@@ -39,6 +43,13 @@ if RESEND_API_KEY:
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+
+# Create uploads directory
+UPLOAD_DIR = Path("/app/backend/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+# Serve uploaded files
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 # CORS
 app.add_middleware(
@@ -74,6 +85,7 @@ class ProductCreate(BaseModel):
     price: float
     category_id: str
     image_url: str
+    video_url: Optional[str] = None
     stock: int = 100
     featured: bool = False
 
@@ -85,6 +97,7 @@ class ProductUpdate(BaseModel):
     price: Optional[float] = None
     category_id: Optional[str] = None
     image_url: Optional[str] = None
+    video_url: Optional[str] = None
     stock: Optional[int] = None
     featured: Optional[bool] = None
 
@@ -524,6 +537,71 @@ async def update_product(product_id: str, data: ProductUpdate, user: dict = Depe
 async def delete_product(product_id: str, user: dict = Depends(get_admin_user)):
     await db.products.delete_one({"_id": ObjectId(product_id)})
     return {"message": "Product deleted"}
+
+# ===================== FILE UPLOAD ROUTES =====================
+
+@api_router.post("/upload/video")
+async def upload_video(file: UploadFile = File(...), user: dict = Depends(get_admin_user)):
+    # Validate file type
+    allowed_types = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/mpeg"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Only video files (MP4, WebM, MOV, AVI) are allowed")
+    
+    # Max 100MB
+    max_size = 100 * 1024 * 1024
+    
+    # Generate unique filename
+    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "mp4"
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    file_path = UPLOAD_DIR / filename
+    
+    # Save file in chunks
+    total_size = 0
+    with open(file_path, "wb") as f:
+        while True:
+            chunk = await file.read(1024 * 1024)  # 1MB chunks
+            if not chunk:
+                break
+            total_size += len(chunk)
+            if total_size > max_size:
+                f.close()
+                file_path.unlink(missing_ok=True)
+                raise HTTPException(status_code=400, detail="File too large. Maximum 100MB allowed")
+            f.write(chunk)
+    
+    video_url = f"/uploads/{filename}"
+    logger.info(f"Video uploaded: {filename} ({total_size / 1024 / 1024:.1f}MB)")
+    
+    return {"video_url": video_url, "filename": filename, "size": total_size}
+
+@api_router.post("/upload/image")
+async def upload_image(file: UploadFile = File(...), user: dict = Depends(get_admin_user)):
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Only image files (JPEG, PNG, WebP, GIF) are allowed")
+    
+    max_size = 10 * 1024 * 1024  # 10MB
+    
+    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    file_path = UPLOAD_DIR / filename
+    
+    total_size = 0
+    with open(file_path, "wb") as f:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            total_size += len(chunk)
+            if total_size > max_size:
+                f.close()
+                file_path.unlink(missing_ok=True)
+                raise HTTPException(status_code=400, detail="File too large. Maximum 10MB allowed")
+            f.write(chunk)
+    
+    image_url = f"/uploads/{filename}"
+    return {"image_url": image_url, "filename": filename, "size": total_size}
 
 # ===================== CART ROUTES =====================
 

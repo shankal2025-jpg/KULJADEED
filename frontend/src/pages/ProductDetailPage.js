@@ -183,13 +183,26 @@ const ProductDetailPage = () => {
         </Button>
 
         <div className="grid md:grid-cols-2 gap-12">
-          {/* Product Image */}
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <img
-              src={product.image_url}
-              alt={getLocalizedName(product)}
-              className="w-full aspect-square object-cover"
-            />
+          {/* Product Image & Video */}
+          <div className="space-y-4">
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <img
+                src={product.image_url?.startsWith('/') ? `${API}${product.image_url}` : product.image_url}
+                alt={getLocalizedName(product)}
+                className="w-full aspect-square object-cover"
+              />
+            </div>
+            {product.video_url && (
+              <div className="bg-black rounded-xl overflow-hidden" data-testid="product-video">
+                <video
+                  src={product.video_url.startsWith('/') ? `${API}${product.video_url}` : product.video_url}
+                  controls
+                  className="w-full rounded-xl"
+                  preload="metadata"
+                  playsInline
+                />
+              </div>
+            )}
           </div>
 
           {/* Product Info */}

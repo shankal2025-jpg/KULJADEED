@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, ShoppingCart, Users, DollarSign, Plus, Pencil, Trash2, ArrowLeft, Tag, Truck, Image, Layers } from 'lucide-react';
+import { Package, ShoppingCart, Users, DollarSign, Plus, Pencil, Trash2, ArrowLeft, Tag, Truck, Image, Layers, Video, Upload, X, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -54,8 +54,11 @@ const AdminPage = () => {
   // Product form state
   const [productForm, setProductForm] = useState({
     name_en: '', name_ar: '', description_en: '', description_ar: '',
-    price: '', category_id: '', image_url: '', stock: '100', featured: false
+    price: '', category_id: '', image_url: '', video_url: '', stock: '100', featured: false
   });
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [imageUploading, setImageUploading] = useState(false);
 
   // Coupon form state
   const [couponForm, setCouponForm] = useState({
@@ -110,7 +113,7 @@ const AdminPage = () => {
   const resetProductForm = () => {
     setProductForm({
       name_en: '', name_ar: '', description_en: '', description_ar: '',
-      price: '', category_id: '', image_url: '', stock: '100', featured: false
+      price: '', category_id: '', image_url: '', video_url: '', stock: '100', featured: false
     });
     setEditingProduct(null);
   };
@@ -125,6 +128,7 @@ const AdminPage = () => {
       price: product.price.toString(),
       category_id: product.category_id,
       image_url: product.image_url,
+      video_url: product.video_url || '',
       stock: product.stock.toString(),
       featured: product.featured
     });
@@ -136,7 +140,8 @@ const AdminPage = () => {
       const data = {
         ...productForm,
         price: parseFloat(productForm.price),
-        stock: parseInt(productForm.stock)
+        stock: parseInt(productForm.stock),
+        video_url: productForm.video_url || null
       };
 
       if (editingProduct) {
@@ -152,6 +157,63 @@ const AdminPage = () => {
       resetProductForm();
     } catch (e) {
       alert(e.response?.data?.detail || 'Failed to save product');
+    }
+  };
+
+  const handleVideoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const maxSize = 100 * 1024 * 1024; // 100MB
+    if (file.size > maxSize) {
+      alert(lang === 'ar' ? 'حجم الفيديو كبير جداً. الحد الأقصى 100MB' : 'Video too large. Maximum 100MB');
+      return;
+    }
+
+    setVideoUploading(true);
+    setVideoProgress(0);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const { data } = await axios.post(`${API}/api/upload/video`, formData, {
+        withCredentials: true,
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          const pct = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setVideoProgress(pct);
+        }
+      });
+
+      setProductForm({ ...productForm, video_url: data.video_url });
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to upload video');
+    } finally {
+      setVideoUploading(false);
+      setVideoProgress(0);
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setImageUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const { data } = await axios.post(`${API}/api/upload/image`, formData, {
+        withCredentials: true,
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      setProductForm({ ...productForm, image_url: data.image_url });
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to upload image');
+    } finally {
+      setImageUploading(false);
     }
   };
 
@@ -440,12 +502,66 @@ const AdminPage = () => {
                         </div>
                       </div>
                       <div>
-                        <Label>Image URL</Label>
-                        <Input
-                          value={productForm.image_url}
-                          onChange={(e) => setProductForm({ ...productForm, image_url: e.target.value })}
-                          data-testid="product-image"
-                        />
+                        <Label>{lang === 'ar' ? 'صورة المنتج' : 'Product Image'}</Label>
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <Input
+                              value={productForm.image_url}
+                              onChange={(e) => setProductForm({ ...productForm, image_url: e.target.value })}
+                              placeholder={lang === 'ar' ? 'رابط الصورة أو ارفع صورة' : 'Image URL or upload'}
+                              data-testid="product-image"
+                            />
+                            <label className="cursor-pointer">
+                              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} data-testid="image-upload-input" />
+                              <div className={`flex items-center gap-1 px-3 py-2 border rounded-md text-sm hover:bg-gray-50 whitespace-nowrap ${imageUploading ? 'opacity-50' : ''}`}>
+                                {imageUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                {lang === 'ar' ? 'رفع' : 'Upload'}
+                              </div>
+                            </label>
+                          </div>
+                          {productForm.image_url && (
+                            <img src={productForm.image_url.startsWith('/') ? `${API}${productForm.image_url}` : productForm.image_url} alt="Preview" className="w-20 h-20 object-cover rounded-lg border" />
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <Label>{lang === 'ar' ? 'فيديو المنتج' : 'Product Video'}</Label>
+                        <div className="space-y-2">
+                          {productForm.video_url ? (
+                            <div className="relative border rounded-lg overflow-hidden bg-black">
+                              <video src={productForm.video_url.startsWith('/') ? `${API}${productForm.video_url}` : productForm.video_url} className="w-full max-h-40 object-contain" controls />
+                              <button
+                                type="button"
+                                onClick={() => setProductForm({ ...productForm, video_url: '' })}
+                                className="absolute top-2 end-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                                data-testid="remove-video-btn"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer block" data-testid="video-upload-label">
+                              <input type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} disabled={videoUploading} data-testid="video-upload-input" />
+                              <div className={`border-2 border-dashed rounded-xl p-6 text-center hover:border-gray-400 transition-colors ${videoUploading ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}`}>
+                                {videoUploading ? (
+                                  <div className="space-y-2">
+                                    <Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto" />
+                                    <p className="text-sm text-blue-600 font-medium">{lang === 'ar' ? 'جاري الرفع...' : 'Uploading...'} {videoProgress}%</p>
+                                    <div className="w-full bg-blue-100 rounded-full h-2">
+                                      <div className="bg-blue-500 h-2 rounded-full transition-all" style={{ width: `${videoProgress}%` }} />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1">
+                                    <Video className="h-8 w-8 text-gray-400 mx-auto" />
+                                    <p className="text-sm text-gray-500">{lang === 'ar' ? 'اضغط لرفع فيديو' : 'Click to upload video'}</p>
+                                    <p className="text-xs text-gray-400">MP4, WebM, MOV (max 100MB)</p>
+                                  </div>
+                                )}
+                              </div>
+                            </label>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Switch
@@ -467,12 +583,15 @@ const AdminPage = () => {
                 {products.map((product) => (
                   <div key={product.id} className="p-4 flex items-center gap-4" data-testid={`admin-product-${product.id}`}>
                     <img
-                      src={product.image_url}
+                      src={product.image_url?.startsWith('/') ? `${API}${product.image_url}` : product.image_url}
                       alt={product.name_en}
                       className="w-16 h-16 object-cover rounded-lg"
                     />
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate text-start">{getLocalizedName(product)}</h3>
+                      <h3 className="font-medium truncate text-start">
+                        {getLocalizedName(product)}
+                        {product.video_url && <Video className="inline-block h-4 w-4 ms-1 text-blue-500" />}
+                      </h3>
                       <p className="text-sm text-gray-500">{formatPrice(product.price)} • Stock: {product.stock}</p>
                     </div>
                     <div className="flex items-center gap-2">
